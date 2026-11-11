@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>SEND IT — Downhill MTB</title>
+<meta name="description" content="A fast, arcade downhill mountain biking game. Send it, flip it, stomp the landing." />
+<meta name="theme-color" content="#0d1710" />
+<meta property="og:title" content="SEND IT — Downhill MTB" />
+<meta property="og:description" content="A fast, arcade downhill mountain biking trick game. Flip it. Whip it. Stomp it." />
+<meta property="og:type" content="website" />
+<link rel="icon" type="image/svg+xml" href="favicon.svg" />
+<link rel="stylesheet" href="styles.css?v=5" />
+</head>
+<body>
+<canvas id="game" aria-label="Downhill mountain biking game"></canvas>
+
+<button id="soundBtn" class="sound" aria-label="Toggle sound" aria-pressed="true">
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M4 9.4h3.3L12.2 5v14l-4.9-4.4H4z" fill="currentColor" stroke="none"/>
+    <g class="waves">
+      <path d="M15.3 8.7a4.6 4.6 0 0 1 0 6.6"/>
+      <path d="M18 6.1a8.2 8.2 0 0 1 0 11.8"/>
+    </g>
+    <path class="slash" d="M15.2 8.8l5.6 6.4M20.8 8.8l-5.6 6.4"/>
+  </svg>
+  <span id="soundLabel">SOUND</span>
+</button>
+
+<div id="hud" class="hud hidden" aria-hidden="true">
+  <div class="hud-top">
+    <div class="score-wrap">
+      <div class="panel score-panel">
+        <span class="label">SCORE</span>
+        <span class="score-value" id="score">0</span>
+      </div>
+      <div class="combo" id="combo">
+        <span>COMBO <b id="comboCount">×1</b></span>
+        <div class="combo-track"><i id="comboBar"></i></div>
+      </div>
+    </div>
+
+    <div class="trick-feed" id="trickFeed">
+      <b id="trickName"></b>
+      <span id="trickPts"></span>
+    </div>
+
+    <div class="right-stack">
+      <div class="panel stats-panel">
+        <div class="stat"><span class="label">DISTANCE</span><b><span id="dist">0</span><small>m</small></b></div>
+        <div class="stat"><span class="label">SPEED</span><b><span id="speed">0</span><small>km/h</small></b></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hud-bottom">
+    <div class="panel boost-panel" id="boostPanel" role="button" tabindex="0" aria-label="Use boost">
+      <div class="boost-head">
+        <span class="label">BOOST</span>
+        <span class="key">B</span>
+      </div>
+      <div class="boost-track"><i id="boostBar"></i></div>
+    </div>
+    <div class="panel bails-panel">
+      <span class="label">WIPEOUTS LEFT</span>
+      <div class="bails" id="bails"><i></i><i></i><i></i></div>
+    </div>
+  </div>
+</div>
+
+<div id="wipeout" class="wipeout" aria-hidden="true">WIPEOUT</div>
+<div id="toast" class="toast" aria-hidden="true"></div>
+
+<div id="menu" class="overlay menu">
+  <div class="menu-inner">
+    <div class="eyebrow"><span></span>DOWNHILL MTB</div>
+    <h1 class="logo">SEND&nbsp;<span class="logo-it">IT</span></h1>
+    <p class="tagline">A full-send downhill run. <br />Flip it. Whip it. Stomp it.</p>
+    <div class="menu-actions">
+      <button id="startBtn" class="btn primary">DROP IN <span class="arr">→</span></button>
+      <div class="best"><span class="label">PERSONAL BEST</span><b id="menuBest">0</b></div>
+    </div>
+    <div class="controls">
+      <div class="ctrl"><span><kbd>→</kbd><kbd>D</kbd></span><em>Sprint</em></div>
+      <div class="ctrl"><span><kbd>←</kbd><kbd>A</kbd></span><em>Brake</em></div>
+      <div class="ctrl"><span><kbd>↑</kbd><kbd>W</kbd></span><em>Ollie / backflip</em></div>
+      <div class="ctrl"><span><kbd>↓</kbd><kbd>S</kbd></span><em>Tuck / frontflip</em></div>
+      <div class="ctrl"><span><kbd>SHIFT</kbd></span><em>Style grab</em></div>
+      <div class="ctrl"><span><kbd>B</kbd></span><em>Boost</em></div>
+    </div>
+    <p class="auto-line">Auto-pedal is on · hold <b>→</b> / <b>D</b> to sprint</p>
+    <p class="hint">Auto-pedal is always on — hold <kbd>→</kbd><kbd>D</kbd> to sprint. Land with your wheels lined up and stack it three times and the run's over.</p>
+  </div>
+  <div class="menu-foot"><span>ARROWS / WASD</span><span class="dot">•</span><span>M TO MUTE</span><span class="dot">•</span><span>3 WIPEOUTS</span></div>
+</div>
+
+<div id="over" class="overlay over hidden">
+  <div class="over-card">
+    <div class="eyebrow eyebrow-center">RUN OVER</div>
+    <h2 class="over-title">WIPEOUT</h2>
+    <div class="big-score" id="finalScore">0</div>
+    <div class="over-stats">
+      <div><span class="label">DISTANCE</span><b id="finalDist">0 m</b></div>
+      <div><span class="label">BEST TRICK</span><b id="finalTrick">—</b></div>
+      <div><span class="label">BEST RUN</span><b id="finalBest">0</b></div>
+    </div>
+    <div id="newBest" class="new-best hidden">NEW PERSONAL BEST</div>
+    <div class="over-actions">
+      <button id="againBtn" class="btn primary">RIDE AGAIN <span class="arr">→</span></button>
+      <button id="menuBtn" class="btn ghost">MENU</button>
+    </div>
+    <p class="hint">Press <kbd>R</kbd> to drop in again</p>
+  </div>
+</div>
+
+<div id="touch" class="touch hidden">
+  <button class="tbtn" data-act="brake" aria-label="Brake, or frontflip in the air"><b>◀</b><small>BRAKE</small></button>
+  <button class="tbtn tbtn-jump" data-act="jump" aria-label="Jump"><b>▲</b><small>JUMP</small></button>
+  <button class="tbtn" data-act="grab" aria-label="Grab"><b>✦</b><small>GRAB</small></button>
+  <button class="tbtn" data-act="pedal" aria-label="Pedal, or backflip in the air"><b>▶</b><small>PEDAL</small></button>
+</div>
+
+<script src="game.js?v=9"></script>
+</body>
+</html>
