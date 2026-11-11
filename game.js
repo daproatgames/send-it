@@ -33,6 +33,16 @@
     return s - Math.floor(s);
   }
 
+  function mulberry32(a) {
+    return function () {
+      a |= 0;
+      a = (a + 0x6d2b79f5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
   function hexToRgb(hex) {
     const h = hex.replace('#', '');
     return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
@@ -337,13 +347,19 @@
      ============================================================ */
 
   class Terrain {
-    constructor() {
+    constructor(seed = null) {
+      this.seed = seed == null ? (Math.random() * 0x7fffffff) | 0 : seed >>> 0;
+      this.rng = mulberry32(this.seed);
       this.segments = [];
       this.cursorX = -520;
       this.cursorY = 0;
       this.cursorSlope = 0.17;
       this.addFlow(1500, { m: 0.17, amp: 2.2, wl: 520 });
       this.extendTo(7000);
+    }
+
+    range(a, b) {
+      return a + this.rng() * (b - a);
     }
 
     difficulty() {
@@ -390,10 +406,10 @@
     addFlow(len, opts = {}) {
       const x0 = this.cursorX;
       const y0 = this.cursorY;
-      const m = opts.m !== undefined ? opts.m : clamp(this.cursorSlope + rand(-0.045, 0.045) + 0.003, 0.07, 0.48);
-      const amp = opts.amp !== undefined ? opts.amp : Math.random() < 0.3 ? rand(5, 13) : rand(1.2, 5);
-      const wl = opts.wl !== undefined ? opts.wl : rand(250, 540);
-      const phase = rand(0, TAU);
+      const m = opts.m !== undefined ? opts.m : clamp(this.cursorSlope + this.range(-0.045, 0.045) + 0.003, 0.07, 0.48);
+      const amp = opts.amp !== undefined ? opts.amp : this.rng() < 0.3 ? this.range(5, 13) : this.range(1.2, 5);
+      const wl = opts.wl !== undefined ? opts.wl : this.range(250, 540);
+      const phase = this.range(0, TAU);
       const seg = {
         type: 'flow',
         x0,
@@ -412,23 +428,23 @@
       const diff = this.difficulty();
       const x0 = this.cursorX;
       const y0 = this.cursorY;
-      const L = 128 + rand(0, 40) + diff * 26;
-      const H = 72 + rand(0, 38) + diff * 52;
+      const L = 128 + this.range(0, 40) + diff * 26;
+      const H = 72 + this.range(0, 38) + diff * 52;
       const m = clamp(this.cursorSlope, 0.08, 0.4);
 
       this.commit({ type: 'ramp', x0, x1: x0 + L, y0, m, H, L });
       const lipY = this.cursorY;
 
-      const g = 0.9 + rand(0, 0.4) + diff * 0.36;
-      const G = 60 + rand(0, 70) + diff * 100;
+      const g = 0.9 + this.range(0, 0.4) + diff * 0.36;
+      const G = 60 + this.range(0, 70) + diff * 100;
       this.commit({ type: 'rolloff', x0: this.cursorX, x1: this.cursorX + G, y0: lipY, g, G });
 
       const yLand = this.cursorY;
-      const LD = 170 + rand(0, 90);
-      const m2 = clamp(0.15 + rand(0, 0.18), 0.1, 0.38);
+      const LD = 170 + this.range(0, 90);
+      const m2 = clamp(0.15 + this.range(0, 0.18), 0.1, 0.38);
       this.commit({ type: 'landing', x0: this.cursorX, x1: this.cursorX + LD, y0: yLand, gs: g, m2, L: LD });
 
-      this.addFlow(270 + rand(0, 230), { m: m2, amp: rand(2, 6), wl: rand(320, 520) });
+      this.addFlow(270 + this.range(0, 230), { m: m2, amp: this.range(2, 6), wl: this.range(320, 520) });
     }
 
     addDrop() {
@@ -436,12 +452,12 @@
       const x0 = this.cursorX;
       const y0 = this.cursorY;
       const m = clamp(this.cursorSlope, 0.08, 0.44);
-      const pre = 60 + rand(0, 70);
-      const over = 22 + rand(0, 20);
-      const D = 45 + rand(0, 70) + diff * 85;
-      const len = pre + over + 70 + rand(0, 80);
+      const pre = 60 + this.range(0, 70);
+      const over = 22 + this.range(0, 20);
+      const D = 45 + this.range(0, 70) + diff * 85;
+      const len = pre + over + 70 + this.range(0, 80);
       this.commit({ type: 'drop', x0, x1: x0 + len, y0, m, pre, over, D, len });
-      this.addFlow(300 + rand(0, 320));
+      this.addFlow(300 + this.range(0, 320));
     }
 
     nextFeature() {
@@ -451,10 +467,10 @@
         return;
       }
       const diff = this.difficulty();
-      const r = Math.random();
+      const r = this.rng();
       if (r < 0.3 + diff * 0.14) this.addKicker();
       else if (r < 0.42 + diff * 0.1) this.addDrop();
-      else this.addFlow(300 + rand(0, 340));
+      else this.addFlow(300 + this.range(0, 340));
     }
 
     extendTo(x) {
@@ -576,7 +592,8 @@
       dom.score.textContent = fmt(total);
       const m = Math.max(0, game.distance);
       dom.dist.textContent = fmt(Math.floor(m));
-      dom.speed.textContent = String(Math.round(game.bike.vx * 0.09));
+      const shownSpeed = game.state === 'countdown' ? 0 : game.bike.vx;
+      dom.speed.textContent = String(Math.round(shownSpeed * 0.09));
 
       const active = game.chain >= 2 && game.comboTimer > 0;
       dom.combo.classList.toggle('active', active);
@@ -675,6 +692,14 @@
       this.newBest = false;
       this.streakAlpha = 0;
       this.cloudSprite = makeCloudSprite();
+      this.online = false;
+      this.remotes = new Map();
+      this.playerName = 'RIDER';
+      this.playerColor = '#ff8a2a';
+      this.countdown = 0;
+      this.goFlash = 0;
+      this.terrainSeed = null;
+      this.onTick = null;
 
       this.onTrick = null;
       this.onToast = null;
@@ -766,7 +791,11 @@
 
     startDemo() {
       this.demo = true;
+      this.online = false;
+      this.remotes.clear();
       this.state = 'menu';
+      this.countdown = 0;
+      this.goFlash = 0;
       this.terrain = new Terrain();
       this.distance = 0;
       this.trickPoints = 0;
@@ -784,7 +813,11 @@
 
     startRun() {
       this.demo = false;
+      this.online = false;
+      this.remotes.clear();
       this.state = 'playing';
+      this.countdown = 0;
+      this.goFlash = 0;
       this.terrain = new Terrain();
       this.distance = 0;
       this.trickPoints = 0;
@@ -805,6 +838,43 @@
       this.sfx.startWind();
       if (this.onBails) this.onBails(3);
       if (this.onToast) this.onToast('DROP IN');
+    }
+
+    startOnline(seed) {
+      this.demo = false;
+      this.online = true;
+      this.state = 'countdown';
+      this.countdown = 3.2;
+      this.goFlash = 0;
+      this.terrainSeed = seed;
+      this.terrain = new Terrain(seed);
+      this.distance = 0;
+      this.trickPoints = 0;
+      this.chain = 0;
+      this.comboTimer = 0;
+      this.boost = 0.35;
+      this.boosting = false;
+      this.bailsLeft = 3;
+      this.bestTrick = null;
+      this.crashTimer = 0;
+      this.newBest = false;
+      this.zone = 0;
+      this.palette = getPalette(0);
+      this.remotes.clear();
+      this.clearInput();
+      this.resetRide(110, 330);
+      this.uiTimer = 0;
+      this.audioTimer = 0;
+      this.sfx.init();
+      this.sfx.stopWind();
+      if (this.onBails) this.onBails(3);
+    }
+
+    endOnline() {
+      this.online = false;
+      this.remotes.clear();
+      this.onTick = null;
+      this.startDemo();
     }
 
     clearInput() {
@@ -841,7 +911,23 @@
         this.updateCamera(dt);
         this.updateParticles(dt);
         this.updateFloaters(dt);
+      } else if (this.state === 'countdown') {
+        this.countdown -= dt;
+        this.updateCamera(dt);
+        this.updateParticles(dt);
+        this.updateFloaters(dt);
+        this.audioTimer -= dt;
+        if (this.audioTimer <= 0) {
+          this.audioTimer = 0.09;
+          this.sfx.updateWind(0, true);
+        }
+        if (this.countdown <= 0) {
+          this.state = 'playing';
+          this.goFlash = 0.8;
+          this.sfx.startWind();
+        }
       } else if (this.state === 'playing') {
+        this.goFlash = Math.max(0, this.goFlash - dt);
         this.updateBike(dt, false);
         this.updateCamera(dt);
         this.updateParticles(dt);
@@ -880,6 +966,7 @@
         this.uiTimer = 0.07;
         ui.tick(this);
       }
+      if (this.onTick) this.onTick(dt);
     }
 
     checkZone() {
@@ -1173,8 +1260,10 @@
       this.chain = 0;
       this.comboTimer = 0;
       this.boost = Math.max(0, this.boost - 0.2);
-      this.bailsLeft = Math.max(0, this.bailsLeft - 1);
-      if (this.onBails) this.onBails(this.bailsLeft);
+      if (!this.online) {
+        this.bailsLeft = Math.max(0, this.bailsLeft - 1);
+        if (this.onBails) this.onBails(this.bailsLeft);
+      }
       if (this.onCrash) this.onCrash();
       this.spawnDust(42, 2.4);
       this.spawnSparks(10);
@@ -1209,7 +1298,7 @@
 
       this.crashTimer -= dt;
       if (this.crashTimer <= 0) {
-        if (this.bailsLeft > 0) this.respawn();
+        if (this.online || this.bailsLeft > 0) this.respawn();
         else this.finishRun();
       }
     }
@@ -1407,6 +1496,7 @@
       this.drawGround(ctx, pal);
       this.drawTrailDetails(ctx, pal);
       this.drawParticles(ctx, false);
+      this.drawRemoteRiders(ctx, pal);
       this.drawBike(ctx, pal);
       this.drawParticles(ctx, true);
       this.drawFloaters(ctx);
@@ -1414,6 +1504,48 @@
       ctx.restore();
 
       this.drawSpeedLines(ctx, W, H);
+      this.drawCountdown(ctx, W, H);
+    }
+
+    drawRemoteRiders(ctx, pal) {
+      if (!this.remotes || this.remotes.size === 0) return;
+      const list = [...this.remotes.values()].filter((r) => r && r.render);
+      list.sort((a, b) => a.render.x - b.render.x);
+      for (const r of list) {
+        if (Math.abs(r.render.x - this.bike.x) > this.viewW * 0.85) continue;
+        this.drawBike(ctx, pal, r.render, { local: false, frameColor: r.color, name: r.name });
+      }
+    }
+
+    drawCountdown(ctx, W, H) {
+      const counting = this.state === 'countdown';
+      const go = this.goFlash > 0;
+      if (!counting && !go) return;
+      if (counting) {
+        ctx.fillStyle = 'rgba(5,10,7,0.16)';
+        ctx.fillRect(0, 0, W, H);
+      }
+      const label = counting ? String(Math.max(1, Math.ceil(this.countdown))) : 'GO!';
+      const size = Math.min(190, W * 0.21);
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = `800 ${size}px "Avenir Next Condensed", "Arial Narrow", Impact, sans-serif`;
+      ctx.lineWidth = Math.max(6, size * 0.055);
+      ctx.strokeStyle = 'rgba(8,14,10,0.5)';
+      ctx.fillStyle = counting ? '#f7f1e1' : '#d9ff83';
+      if (go) ctx.globalAlpha = clamp(this.goFlash / 0.8, 0, 1);
+      ctx.strokeText(label, W / 2, H * 0.44);
+      ctx.fillText(label, W / 2, H * 0.44);
+      if (counting) {
+        ctx.font = '800 12px "Avenir Next Condensed", "Arial Narrow", sans-serif';
+        ctx.fillStyle = '#ffcf6b';
+        ctx.fillText('RIDE TOGETHER', W / 2, H * 0.44 - size * 0.62);
+        ctx.fillStyle = 'rgba(247,241,225,0.65)';
+        ctx.font = '700 10px "Avenir Next Condensed", "Arial Narrow", sans-serif';
+        ctx.fillText('GET READY', W / 2, H * 0.44 + size * 0.58);
+      }
+      ctx.restore();
     }
 
     drawSky(ctx, W, H, pal) {
@@ -1704,9 +1836,9 @@
       ctx.globalAlpha = 1;
     }
 
-    drawBike(ctx, pal) {
-      const b = this.bike;
+    drawBike(ctx, pal, b = this.bike, opts = {}) {
       if (!b) return;
+      const isLocal = opts.local !== false;
       const t = this.terrain;
       const gy = t.groundY(b.x);
       const slopeAng = Math.atan(t.slopeAt(b.x));
@@ -1728,7 +1860,7 @@
       ctx.translate(b.x, b.y);
       ctx.rotate(b.angle);
 
-      const frame = pal.accent;
+      const frame = opts.frameColor || (isLocal ? this.playerColor : null) || pal.accent;
       const dark = '#17130e';
       const rim = '#d6ceb9';
       const jersey = '#216d72';
@@ -1819,7 +1951,7 @@
       ctx.restore();
 
       // rider
-      const tuck = b.grounded && this.input.front ? 1 : 0;
+      const tuck = isLocal && b.grounded && this.input.front ? 1 : 0;
       const crouch = b.grounded ? 1 : 0.72;
       const hip = [-3.5, -35.5 + tuck * 3];
       const shoulder = [5.5 - tuck * 2.6, -50 + tuck * 5.5 + (1 - crouch) * 3];
@@ -1894,7 +2026,47 @@
 
       ctx.restore();
 
-      if (this.state === 'crashed') {
+      if (opts.name) {
+        const name = String(opts.name).slice(0, 16).toUpperCase();
+        ctx.save();
+        ctx.font = '800 13px "Avenir Next Condensed", "Arial Narrow", sans-serif';
+        const tw = ctx.measureText(name).width;
+        const bw = tw + 20;
+        const bh = 20;
+        const bx = b.x - bw / 2;
+        const by = b.y - 82 - bh;
+        const r = 6;
+        ctx.beginPath();
+        ctx.moveTo(bx + r, by);
+        ctx.lineTo(bx + bw - r, by);
+        ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + r);
+        ctx.lineTo(bx + bw, by + bh - r);
+        ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - r, by + bh);
+        ctx.lineTo(bx + r, by + bh);
+        ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - r);
+        ctx.lineTo(bx, by + r);
+        ctx.quadraticCurveTo(bx, by, bx + r, by);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(8,14,10,0.66)';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(b.x - 4, by + bh);
+        ctx.lineTo(b.x + 4, by + bh);
+        ctx.lineTo(b.x, by + bh + 5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = opts.frameColor || pal.accent;
+        ctx.beginPath();
+        ctx.arc(bx + 8, by + bh / 2, 3, 0, TAU);
+        ctx.fill();
+        ctx.fillStyle = '#f7f1e1';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(name, bx + 14, by + bh / 2 + 1);
+        ctx.restore();
+      }
+
+      if (isLocal && this.state === 'crashed') {
         ctx.save();
         ctx.translate(b.x, b.y - 70);
         ctx.fillStyle = '#ffd166';
@@ -2090,6 +2262,11 @@
 
   /* keyboard */
   window.addEventListener('keydown', (e) => {
+    const tag = e.target && e.target.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target && e.target.isContentEditable)) return;
+    const authOpen = document.getElementById('auth') && !document.getElementById('auth').classList.contains('hidden');
+    const onlineOpen = document.getElementById('online') && !document.getElementById('online').classList.contains('hidden');
+    if (authOpen || onlineOpen) return;
     if (e.code === 'KeyM') {
       toggleSound();
       return;
