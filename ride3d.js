@@ -25,6 +25,8 @@
     backBtn: $('back3dBtn'),
     best: $('best3d'),
     over: $('over3d'),
+    overEyebrow: $('over3dEyebrow'),
+    overTitle: $('over3dTitle'),
     finalScore: $('final3d'),
     finalDist: $('finalDist3d'),
     finalTrick: $('finalTrick3d'),
@@ -35,6 +37,9 @@
     exitBtn: $('exit3dBtn'),
     count: $('count3d'),
     countNum: $('count3dNum'),
+    land: $('land3d'),
+    landBar: $('land3dBar'),
+    landDeg: $('land3dDeg'),
     launchBtn: $('ride3dBtn'),
     touch: $('touch3d'),
     boostPanel: $('boostPanel'),
@@ -314,6 +319,7 @@
     addMarkers();
     addMountains();
     addGates();
+    addFinishGate();
     addRut();
     addTufts();
   }
@@ -573,6 +579,59 @@
     }
   }
 
+  function addFinishGate() {
+    const x = MAX_X - 25;
+    const z = pathZ(x);
+    const y = terrainY(x);
+    const poleMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1d, roughness: 0.9 });
+    const poleGeo = new THREE.CylinderGeometry(0.14, 0.22, 7.4, 7);
+    poleGeo.translate(0, 3.7, 0);
+    for (const side of [-1, 1]) {
+      const p = new THREE.Mesh(poleGeo, poleMat);
+      p.position.set(x, y, z + side * 6.0);
+      worldGroup.add(p);
+    }
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, 12.4), poleMat);
+    bar.position.set(x, y + 7.4, z);
+    worldGroup.add(bar);
+
+    const c = document.createElement('canvas');
+    c.width = 1024;
+    c.height = 256;
+    const g2 = c.getContext('2d');
+    g2.fillStyle = '#132218';
+    g2.fillRect(0, 0, 1024, 256);
+    for (let i = 0; i < 32; i++) {
+      g2.fillStyle = i % 2 ? '#f7f1e1' : '#ff8a2a';
+      g2.fillRect(i * 32, 0, 32, 18);
+      g2.fillRect(i * 32, 238, 32, 18);
+    }
+    g2.strokeStyle = '#ff8a2a';
+    g2.lineWidth = 8;
+    g2.strokeRect(24, 24, 976, 208);
+    g2.fillStyle = '#f7f1e1';
+    g2.font = '900 142px "Avenir Next Condensed", "Arial Narrow", sans-serif';
+    g2.textAlign = 'center';
+    g2.textBaseline = 'middle';
+    g2.fillText('FINISH', 512, 130);
+    const tex = new THREE.CanvasTexture(c);
+    tex.encoding = THREE.sRGBEncoding;
+    tex.anisotropy = 4;
+    const bmat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8, side: THREE.DoubleSide });
+    const banner = new THREE.Mesh(new THREE.PlaneGeometry(11.4, 2.8), bmat);
+    banner.position.set(x, y + 5.7, z);
+    banner.rotation.y = -Math.PI / 2;
+    worldGroup.add(banner);
+
+    const light = new THREE.MeshStandardMaterial({ color: 0xf7f1e1, roughness: 0.85 });
+    const dark = new THREE.MeshStandardMaterial({ color: 0x1a1a18, roughness: 0.9 });
+    for (let i = 0; i < 12; i++) {
+      const box = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.06, 0.94), i % 2 ? light : dark);
+      box.position.set(x, terrainY(x) + 0.05, z - 6 + i + 0.5);
+      worldGroup.add(box);
+    }
+  }
+
   /* ── bike & rider ────────────────────────────────────────── */
 
   function tube(a, b, r, mat) {
@@ -756,6 +815,7 @@
     S.crashTimer = 0;
     S.shake = 0;
     S.goTimer = 0;
+    S.finishBonus = false;
     S.input.jumpBuffer = 0;
     ui.setBails(3);
     updateBikeVisual(0);
@@ -775,6 +835,7 @@
     ui.setHud(false);
     dom.exitBtn.classList.add('hidden');
     dom.touch.classList.add('hidden');
+    dom.land.classList.add('hidden');
     dom.count.classList.add('hidden');
     dom.count.classList.remove('show');
     dom.ridersPanel.classList.add('is-hidden');
@@ -808,6 +869,7 @@
     dom.start.classList.add('hidden');
     dom.start.style.display = 'none';
     dom.over.classList.add('hidden');
+    dom.land.classList.add('hidden');
     ui.setHud(true);
     dom.bailsPanel.classList.remove('online-hide');
     dom.ridersPanel.classList.add('is-hidden');
@@ -848,19 +910,31 @@
     dom.over.classList.add('hidden');
     dom.exitBtn.classList.add('hidden');
     dom.touch.classList.add('hidden');
+    dom.land.classList.add('hidden');
     ui.setHud(false);
     dom.menu.classList.remove('hidden');
     game.state = 'menu';
     game.sfx.stopWind();
+    document.getElementById('toast').classList.remove('show');
+    document.getElementById('wipeout').classList.remove('show');
   }
 
-  function showOver() {
+  function showOver(reason = 'wipeout') {
+    if (S.mode === 'over') return;
     S.mode = 'over';
     S.active = true;
     game.sfx.stopWind();
     document.getElementById('wipeout').classList.remove('show');
     document.getElementById('trickFeed').classList.remove('pop');
     document.getElementById('toast').classList.remove('show');
+    dom.land.classList.add('hidden');
+    const finished = reason === 'finish';
+    if (finished && !S.finishBonus) {
+      S.finishBonus = true;
+      S.trickPoints += 500;
+    }
+    dom.overEyebrow.textContent = finished ? '3D RUN COMPLETE' : '3D RUN OVER';
+    dom.overTitle.textContent = finished ? 'FINISH' : 'WIPEOUT';
     const total = scoreNow();
     const isBest = total > S.best3d;
     if (isBest) {
@@ -1093,8 +1167,8 @@
     }
 
     if (b.x > MAX_X - 10) {
-      // reached the end of the generated trail
-      showOver();
+      // crossed the finish gate
+      showOver('finish');
       return;
     }
 
@@ -1115,7 +1189,7 @@
     b.spinVel = 0;
     b.wheelSpin += 0.5;
 
-    if (rem > 0.97) {
+    if (rem > 1.12) {
       b.flipRot = 0;
       b.spinRot = 0;
       crash();
@@ -1127,7 +1201,7 @@
     if (rem < 0.16) {
       grade = 'PERFECT';
       gradeMult = 1.35;
-    } else if (rem < 0.47) {
+    } else if (rem < 0.55) {
       grade = 'CLEAN';
       gradeMult = 1;
     }
@@ -1208,7 +1282,7 @@
     S.crashTimer -= dt;
     if (S.crashTimer <= 0) {
       if (S.bails <= 0) {
-        showOver();
+        showOver('wipeout');
       } else {
         respawn();
       }
@@ -1374,11 +1448,24 @@
 
   function updateHud(force) {
     if (!S.bike) return;
-    if (S.mode === 'countdown') {
-      ui.tick(hudView());
+    ui.tick(hudView());
+    updateLandingIndicator();
+  }
+
+  function updateLandingIndicator() {
+    if (!dom.land) return;
+    const b = S.bike;
+    if (S.mode !== 'playing' || !b || b.onGround || b.airTime < 0.15) {
+      dom.land.classList.add('hidden');
       return;
     }
-    ui.tick(hudView());
+    dom.land.classList.remove('hidden');
+    const rem = Math.abs(wrapAngle(b.flipRot));
+    const deg = Math.round((rem * 180) / Math.PI);
+    dom.landDeg.textContent = `${deg}°`;
+    const q = clamp(1 - rem / Math.PI, 0, 1);
+    dom.landBar.style.transform = `scaleX(${q})`;
+    dom.landBar.style.background = rem < 0.5 ? '#d9ff83' : rem < 1.12 ? '#ffcf6b' : '#ff7a6b';
   }
 
   /* ── input ───────────────────────────────────────────────── */
@@ -1538,6 +1625,40 @@
     startGame,
     showIntro,
     exitToMenu,
+    pathZ,
+    terrainY,
+    teleport: (x) => {
+      if (!S.bike) return;
+      S.mode = 'playing';
+      S.crashTimer = 0;
+      S.bike.x = Math.max(0, Math.min(MAX_X - 2, x));
+      S.bike.y = terrainY(S.bike.x);
+      S.bike.z = pathZ(S.bike.x);
+      S.bike.lateral = 0;
+      S.bike.vx = 12;
+      S.bike.vy = slopeAt(S.bike.x) * 12;
+      S.bike.onGround = true;
+      S.bike.prevX = S.bike.x;
+      S.bike.flipRot = 0;
+      S.bike.spinRot = 0;
+      S.bike.flipVel = 0;
+      S.bike.spinVel = 0;
+      S.bike.lean = 0;
+      S.bike.airTime = 0;
+      S.bike.grabTime = 0;
+      S.bike.basePitch = Math.atan(slopeAt(S.bike.x));
+      S.input.left = false;
+      S.input.right = false;
+      S.input.up = false;
+      S.input.down = false;
+      S.input.grab = false;
+      S.input.boost = false;
+      S.input.jumpBuffer = 0;
+      dom.over.classList.add('hidden');
+      dom.land.classList.add('hidden');
+      updateBikeVisual(0);
+      snapCamera();
+    },
     step: (dt = 1 / 60, n = 1) => {
       for (let i = 0; i < n; i++) update(dt);
       if (renderer) renderer.render(scene, camera);

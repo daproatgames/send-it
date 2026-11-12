@@ -10,7 +10,7 @@ Ride a procedurally generated trail, hit kickers, backflip and frontflip, throw 
 
 - **Solo** — endless downhill run with tricks, combos, boosts, and wipeouts.
 - **Ride Together** — online ghost ride with real riders. Host a room, share the 5-character code, and ride the same seeded trail in real time.
-- **Freeride 3D** — a chase-cam, low-poly descent with carve steering, jumps, flips, spins, gate boosts, and a separate 3D best score.
+- **Freeride 3D** — a chase-cam, low-poly descent with carve steering, jumps, flips, spins, gate boosts, and a separate 3D best score. The trail ends at a finish gate; a landing gauge shows your flip angle before touchdown.
 
 ## Rider profiles
 

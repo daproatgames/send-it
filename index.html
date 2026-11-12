@@ -10,7 +10,7 @@
 <meta property="og:description" content="A fast, arcade downhill mountain biking trick game. Flip it. Whip it. Stomp it — solo or online with friends." />
 <meta property="og:type" content="website" />
 <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-<link rel="stylesheet" href="styles.css?v=11" />
+<link rel="stylesheet" href="styles.css?v=13" />
 </head>
 <body>
 <canvas id="game" aria-label="Downhill mountain biking game"></canvas>
@@ -144,14 +144,14 @@
       <button id="start3dBtn" class="btn primary" type="button">DROP IN 3D <span class="arr">→</span></button>
       <button id="back3dBtn" class="btn ghost" type="button">BACK</button>
     </div>
-    <p class="hint">Keyboard or touch · 3 wipeouts ends the run</p>
+    <p class="hint">Land level · 3 wipeouts ends the run</p>
   </div>
 </div>
 
 <div id="over3d" class="overlay over over3d hidden">
   <div class="over-card">
-    <div class="eyebrow eyebrow-center">3D RUN OVER</div>
-    <h2 class="over-title">WIPEOUT</h2>
+    <div class="eyebrow eyebrow-center" id="over3dEyebrow">3D RUN OVER</div>
+    <h2 class="over-title" id="over3dTitle">WIPEOUT</h2>
     <div class="big-score" id="final3d">0</div>
     <div class="over-stats">
       <div><span class="label">DISTANCE</span><b id="finalDist3d">0 m</b></div>
@@ -168,6 +168,11 @@
 </div>
 
 <button id="exit3dBtn" class="exit3d hidden" type="button">EXIT 3D</button>
+<div id="land3d" class="land3d hidden">
+  <span class="label">LANDING</span>
+  <div class="land3d-track"><i id="land3dBar"></i></div>
+  <b id="land3dDeg">0°</b>
+</div>
 <div id="count3d" class="count3d hidden" aria-hidden="true"><b id="count3dNum">3</b><small>GET READY</small></div>
 
 <div id="auth" class="overlay auth hidden">
@@ -264,6 +269,6 @@
 <script src="game.js?v=13"></script>
 <script src="online.js?v=5"></script>
 <script src="vendor/three.min.js"></script>
-<script src="ride3d.js?v=8"></script>
+<script src="ride3d.js?v=11"></script>
 </body>
 </html>
