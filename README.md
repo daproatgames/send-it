@@ -1,6 +1,6 @@
 # SEND IT — Downhill MTB
 
-A fast, arcade downhill mountain biking game built with a single Canvas 2D scene and no build step.
+A fast, arcade downhill mountain biking game built with Canvas 2D and a low-poly Three.js freeride mode. No build step.
 
 Ride a procedurally generated trail, hit kickers, backflip and frontflip, throw style grabs, chain combos, and boost. Land with your wheels lined up or eat dirt. Three wipeouts ends a solo run — online, the group ride keeps going.
 
@@ -10,6 +10,7 @@ Ride a procedurally generated trail, hit kickers, backflip and frontflip, throw 
 
 - **Solo** — endless downhill run with tricks, combos, boosts, and wipeouts.
 - **Ride Together** — online ghost ride with real riders. Host a room, share the 5-character code, and ride the same seeded trail in real time.
+- **Freeride 3D** — a chase-cam, low-poly descent with carve steering, jumps, flips, spins, gate boosts, and a separate 3D best score.
 
 ## Rider profiles
 
@@ -18,6 +19,8 @@ Click the **SIGN IN** chip on the menu to create a local rider profile (name, PI
 Online rooms use a public MQTT relay. Use a nickname, not personal information. A dedicated backend would be needed for cross-device accounts and ranked leaderboards.
 
 ## Controls
+
+### 2D / online
 
 | Input | Action |
 | --- | --- |
@@ -29,6 +32,18 @@ Online rooms use a public MQTT relay. Use a nickname, not personal information. 
 | `B` | Boost |
 | `M` | Mute |
 | `R` | Ride again after a wipeout |
+
+### 3D freeride
+
+| Input | Action |
+| --- | --- |
+| `→` / `D` | Carve right · spin right in the air |
+| `←` / `A` | Carve left · spin left in the air |
+| `W` / `Space` | Jump · hold to backflip |
+| `S` | Brake · frontflip in the air |
+| `Shift` | Grab |
+| `B` | Boost |
+| `Esc` | Exit 3D |
 
 Touch controls are available on phones and tablets.
 
@@ -44,5 +59,6 @@ Then open `http://localhost:8765`.
 
 ## Credits
 
-- [MQTT.js](https://github.com/mqttjs/MQTT.js) (MIT) powers the online room relay. Its license is in `vendor/mqtt.LICENSE`.
+- [Three.js](https://threejs.org/) r149 (MIT) powers the 3D freeride mode. License: `vendor/three.LICENSE`.
+- [MQTT.js](https://github.com/mqttjs/MQTT.js) (MIT) powers the online room relay. License: `vendor/mqtt.LICENSE`.
 - The online relay is hosted by the public EMQX broker for this prototype.

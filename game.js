@@ -592,8 +592,8 @@
       dom.score.textContent = fmt(total);
       const m = Math.max(0, game.distance);
       dom.dist.textContent = fmt(Math.floor(m));
-      const shownSpeed = game.state === 'countdown' ? 0 : game.bike.vx;
-      dom.speed.textContent = String(Math.round(shownSpeed * 0.09));
+      const kmh = game.displaySpeed != null ? game.displaySpeed : game.state === 'countdown' ? 0 : game.bike.vx * 0.09;
+      dom.speed.textContent = String(Math.round(kmh));
 
       const active = game.chain >= 2 && game.comboTimer > 0;
       dom.combo.classList.toggle('active', active);
@@ -2262,6 +2262,7 @@
 
   /* keyboard */
   window.addEventListener('keydown', (e) => {
+    if (window.__3D_ACTIVE) return;
     const tag = e.target && e.target.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target && e.target.isContentEditable)) return;
     const authOpen = document.getElementById('auth') && !document.getElementById('auth').classList.contains('hidden');
@@ -2409,6 +2410,11 @@
     let delta = (now - last) / 1000;
     last = now;
     if (delta > 0.25) delta = 0.25;
+    if (window.__3D_ACTIVE) {
+      acc = 0;
+      requestAnimationFrame(loop);
+      return;
+    }
     acc += delta;
     let steps = 0;
     while (acc >= STEP && steps < 20) {
@@ -2424,4 +2430,6 @@
   requestAnimationFrame(loop);
 
   window.__SENDIT = game;
+  window.__SENDIT_UI = ui;
+  window.__SENDIT_TERRAIN = Terrain;
 })();
