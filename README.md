@@ -1,6 +1,6 @@
 # SEND IT — Downhill MTB
 
-A fast, arcade downhill mountain biking game built with Canvas 2D and a low-poly Three.js freeride mode. No build step.
+A fast, arcade downhill mountain biking game built with Canvas 2D and a high-fidelity Three.js freeride mode. No build step.
 
 Ride a procedurally generated trail, hit kickers, backflip and frontflip, throw style grabs, chain combos, and boost. Land with your wheels lined up or eat dirt. Three wipeouts ends a solo run — online, the group ride keeps going.
 
@@ -10,7 +10,7 @@ Ride a procedurally generated trail, hit kickers, backflip and frontflip, throw 
 
 - **Solo** — endless downhill run with tricks, combos, boosts, and wipeouts.
 - **Ride Together** — online ghost ride with real riders. Host a room, share the 5-character code, and ride the same seeded trail in real time.
-- **Freeride 3D** — a chase-cam, low-poly descent with carve steering, jumps, flips, spins, gate boosts, and a separate 3D best score. The trail ends at a finish gate; a landing gauge shows your flip angle before touchdown.
+- **Freeride 3D** — a chase-cam, PBR alpine descent with carve steering, jumps, flips, spins, gate boosts, and a separate 3D best score. The trail ends at a finish gate; a landing gauge shows your flip angle before touchdown.
 
 ## Rider profiles
 
@@ -60,5 +60,6 @@ Then open `http://localhost:8765`.
 ## Credits
 
 - [Three.js](https://threejs.org/) r149 (MIT) powers the 3D freeride mode. License: `vendor/three.LICENSE`.
+- [Poly Haven](https://polyhaven.com/) CC0 PBR textures (trail, grass, rock, bark, foliage). License: `assets/textures/LICENSE.txt`.
 - [MQTT.js](https://github.com/mqttjs/MQTT.js) (MIT) powers the online room relay. License: `vendor/mqtt.LICENSE`.
 - The online relay is hosted by the public EMQX broker for this prototype.

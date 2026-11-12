@@ -1206,6 +1206,30 @@ kbd {
 }
 body.mode3d #game { display: none; }
 body.mode3d #game3d { display: block; }
+#game3d canvas {
+  filter: saturate(1.08) contrast(1.045) brightness(0.985);
+}
+#game3d::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 46%, rgba(0, 0, 0, 0) 52%, rgba(6, 9, 8, 0.32) 100%),
+    linear-gradient(180deg, rgba(8, 16, 24, 0.16) 0%, rgba(8, 16, 24, 0) 22%, rgba(8, 16, 24, 0) 72%, rgba(7, 9, 7, 0.24) 100%);
+}
+#game3d::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0.06;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 140px 140px;
+}
 body.mode3d #touch { display: none !important; }
 body.mode3d #touch3d { display: flex; }
 
