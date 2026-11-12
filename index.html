@@ -10,7 +10,7 @@
 <meta property="og:description" content="A fast, arcade downhill mountain biking trick game. Flip it. Whip it. Stomp it — solo or online with friends." />
 <meta property="og:type" content="website" />
 <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-<link rel="stylesheet" href="styles.css?v=15" />
+<link rel="stylesheet" href="styles.css?v=16" />
 </head>
 <body>
 <canvas id="game" aria-label="Downhill mountain biking game"></canvas>
@@ -83,7 +83,12 @@
   <div class="menu-inner">
     <div class="menu-topline">
       <div class="eyebrow"><span></span>DOWNHILL MTB</div>
-      <button id="profileBtn" class="profile-chip" type="button"><i id="profileDot"></i><span id="profileName">SIGN IN</span></button>
+      <div class="topline-right">
+        <button id="walletBtn" class="wallet-chip" type="button" aria-label="Open garage">
+          <i class="coin-mark">S</i><b data-garage-coins>0</b>
+        </button>
+        <button id="profileBtn" class="profile-chip" type="button"><i id="profileDot"></i><span id="profileName">SIGN IN</span></button>
+      </div>
     </div>
     <h1 class="logo">SEND&nbsp;<span class="logo-it">IT</span></h1>
     <p class="tagline">A full-send downhill run. <br />Flip it. Whip it. Stomp it.</p>
@@ -91,6 +96,7 @@
       <button id="startBtn" class="btn primary">DROP IN <span class="arr">→</span></button>
       <button id="onlineBtn" class="btn ghost ride-together" type="button"><span class="live-dot"></span>RIDE TOGETHER</button>
       <button id="ride3dBtn" class="btn ghost mode3d-btn" type="button"><span class="badge3d">3D</span> FREERIDE</button>
+      <button id="garageBtn" class="btn ghost garage-btn" type="button"><span class="garage-ico">◆</span> GARAGE</button>
       <div class="best"><span class="label">PERSONAL BEST</span><b id="menuBest">0</b></div>
     </div>
     <div class="controls">
@@ -112,6 +118,7 @@
     <div class="eyebrow eyebrow-center">RUN OVER</div>
     <h2 class="over-title">WIPEOUT</h2>
     <div class="big-score" id="finalScore">0</div>
+    <div class="run-coins" id="runCoins">+0 COINS</div>
     <div class="over-stats">
       <div><span class="label">DISTANCE</span><b id="finalDist">0 m</b></div>
       <div><span class="label">BEST TRICK</span><b id="finalTrick">—</b></div>
@@ -128,9 +135,9 @@
 
 <div id="start3d" class="overlay over start3d hidden">
   <div class="over-card start3d-card">
-    <div class="eyebrow eyebrow-center">CHASE CAM · ALPINE FREERIDE</div>
+    <div class="eyebrow eyebrow-center">CHASE CAM · FREERIDE</div>
     <h2 class="over-title">FREERIDE 3D</h2>
-    <p class="modal-sub">A cinematic dusk descent. Carve the trail, send the kickers, spin and flip.</p>
+    <p class="modal-sub" id="start3dSub">A cinematic dusk descent. Carve the trail, send the kickers, spin and flip.</p>
     <div class="controls controls3d">
       <div class="ctrl"><span><kbd>←</kbd><kbd>→</kbd></span><em>Carve / spin</em></div>
       <div class="ctrl"><span><kbd>W</kbd><kbd>SPACE</kbd></span><em>Jump / backflip</em></div>
@@ -140,8 +147,12 @@
       <div class="ctrl"><span><kbd>ESC</kbd></span><em>Exit</em></div>
     </div>
     <div class="start3d-best"><span class="label">3D BEST</span><b id="best3d">0</b></div>
+    <div class="start3d-rig"><span class="label">CURRENT RIG</span><b data-garage-bike>ROOTLINE Dust Runner</b></div>
+    <div class="start3d-rig"><span class="label">TRAIL</span><b data-garage-trail>Dusk Ridge</b></div>
     <div class="over-actions">
       <button id="start3dBtn" class="btn primary" type="button">DROP IN 3D <span class="arr">→</span></button>
+      <button id="garage3dBtn" class="btn ghost" type="button">GARAGE</button>
+      <button id="trails3dBtn" class="btn ghost" type="button">TRAILS</button>
       <button id="back3dBtn" class="btn ghost" type="button">BACK</button>
     </div>
     <p class="hint">Land level · 3 wipeouts ends the run</p>
@@ -153,6 +164,7 @@
     <div class="eyebrow eyebrow-center" id="over3dEyebrow">3D RUN OVER</div>
     <h2 class="over-title" id="over3dTitle">WIPEOUT</h2>
     <div class="big-score" id="final3d">0</div>
+    <div class="run-coins" id="runCoins3d">+0 COINS</div>
     <div class="over-stats">
       <div><span class="label">DISTANCE</span><b id="finalDist3d">0 m</b></div>
       <div><span class="label">BEST TRICK</span><b id="finalTrick3d">—</b></div>
@@ -174,6 +186,32 @@
   <b id="land3dDeg">0°</b>
 </div>
 <div id="count3d" class="count3d hidden" aria-hidden="true"><b id="count3dNum">3</b><small>GET READY</small></div>
+
+<div id="garage" class="overlay garage hidden">
+  <div class="garage-card">
+    <div class="garage-head">
+      <div>
+        <div class="eyebrow">RIDER GARAGE</div>
+        <h2 class="modal-title">BIKES &amp; GEAR</h2>
+      </div>
+      <div class="garage-wallet">
+        <span class="label">COINS</span>
+        <b><i class="coin-mark">S</i><span data-garage-coins>0</span></b>
+      </div>
+      <button id="garageClose" class="modal-close" type="button" aria-label="Close">✕</button>
+    </div>
+    <p class="garage-sub">Earn coins by finishing runs, sending tricks, and going the distance. Everything is saved on this device.</p>
+    <div class="garage-tabs">
+      <button class="garage-tab active" type="button" data-garage-tab="bikes">BIKES</button>
+      <button class="garage-tab" type="button" data-garage-tab="gear">RIDER KITS</button>
+      <button class="garage-tab" type="button" data-garage-tab="trails">TRAILS</button>
+    </div>
+    <div id="garageBikes" class="garage-grid"></div>
+    <div id="garageGear" class="garage-grid is-hidden"></div>
+    <div id="garageTrails" class="garage-grid is-hidden"></div>
+    <p class="garage-note" id="garageNote">Ride to earn coins. New bikes change your 3D speed, handling, and pop.</p>
+  </div>
+</div>
 
 <div id="auth" class="overlay auth hidden">
   <div class="auth-card">
@@ -266,9 +304,10 @@
 </div>
 
 <script src="vendor/mqtt.min.js"></script>
-<script src="game.js?v=13"></script>
+<script src="garage.js?v=1"></script>
+<script src="game.js?v=14"></script>
 <script src="online.js?v=5"></script>
 <script src="vendor/three.min.js"></script>
-<script src="ride3d.js?v=14"></script>
+<script src="ride3d.js?v=15"></script>
 </body>
 </html>

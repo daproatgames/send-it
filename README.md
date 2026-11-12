@@ -11,6 +11,16 @@ Ride a procedurally generated trail, hit kickers, backflip and frontflip, throw 
 - **Solo** — endless downhill run with tricks, combos, boosts, and wipeouts.
 - **Ride Together** — online ghost ride with real riders. Host a room, share the 5-character code, and ride the same seeded trail in real time.
 - **Freeride 3D** — a chase-cam, PBR alpine descent with carve steering, jumps, flips, spins, gate boosts, and a separate 3D best score. The trail ends at a finish gate; a landing gauge shows your flip angle before touchdown.
+- **Garage** — earn coins from runs, buy fictional bike brands and rider kits, and pick from four 3D trails: Dusk Ridge, Fern Gully, Red Rock, and Storm Pass.
+
+## Garage & economy
+
+Open **GARAGE** from the main menu or the 3D start card. Coins are earned at the end of every solo/3D run from your score and distance, then saved locally on the device.
+
+- **Bikes** — six fictional brands/models with different 3D speed, handling, and pop stats.
+- **Rider kits** — jersey, helmet, pants, and shoe colour sets.
+- **Trails** — four 3D environments with their own seed, terrain scale, path shape, lighting, fog, vegetation density, and weather.
+- Bike brands are invented for this game; no real-world trademarks are used.
 
 ## Rider profiles
 
@@ -62,4 +72,5 @@ Then open `http://localhost:8765`.
 - [Three.js](https://threejs.org/) r149 (MIT) powers the 3D freeride mode. License: `vendor/three.LICENSE`.
 - [Poly Haven](https://polyhaven.com/) CC0 PBR textures (trail, grass, rock, bark, foliage). License: `assets/textures/LICENSE.txt`.
 - [MQTT.js](https://github.com/mqttjs/MQTT.js) (MIT) powers the online room relay. License: `vendor/mqtt.LICENSE`.
+- Bike brands and model names are fictional.
 - The online relay is hosted by the public EMQX broker for this prototype.

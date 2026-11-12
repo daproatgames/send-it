@@ -27,6 +27,7 @@
     overEyebrow: $('over3dEyebrow'),
     overTitle: $('over3dTitle'),
     finalScore: $('final3d'),
+    coins: $('runCoins3d'),
     finalDist: $('finalDist3d'),
     finalTrick: $('finalTrick3d'),
     finalBest: $('finalBest3d'),
@@ -66,6 +67,8 @@
     bails: 3,
     bestTrick: null,
     best3d: loadBest3d(),
+    coinsEarned: 0,
+    rewarded: false,
     crashTimer: 0,
     shake: 0,
     time: 0,
@@ -93,6 +96,17 @@
   let dustCursor = 0;
   let treeTexture = null;
   let grassTexture = null;
+  let grassEdgeAlpha = null;
+  let RIG = null;
+  let KIT = null;
+  let TRAIL = null;
+  let skyTex = null;
+  let envRT = null;
+  let hemiLight = null;
+  let fillLight = null;
+  let rain = null;
+  let rainDirty = true;
+  const windUniform = { value: 0 };
   const DUST_MAX = 140;
   const dustParts = [];
 
@@ -129,16 +143,23 @@
     }
   }
 
+  function trailPath() {
+    return (TRAIL && TRAIL.path) || { a1: 18, w1: 72, a2: 30, w2: 185, a3: 2.2, w3: 27 };
+  }
+
   function pathZ(x) {
-    return Math.sin(x / 72) * 18 + Math.sin(x / 185 + 1.4) * 30 + Math.sin(x / 27 + 0.6) * 2.2;
+    const p = trailPath();
+    return Math.sin(x / p.w1) * p.a1 + Math.sin(x / p.w2 + 1.4) * p.a2 + Math.sin(x / p.w3 + 0.6) * p.a3;
   }
 
   function pathDZ(x) {
-    return (18 / 72) * Math.cos(x / 72) + (30 / 185) * Math.cos(x / 185 + 1.4) + (2.2 / 27) * Math.cos(x / 27 + 0.6);
+    const p = trailPath();
+    return (p.a1 / p.w1) * Math.cos(x / p.w1) + (p.a2 / p.w2) * Math.cos(x / p.w2 + 1.4) + (p.a3 / p.w3) * Math.cos(x / p.w3 + 0.6);
   }
 
   function terrainY(x) {
-    return -S.world.profile.groundY(x * 40) / 40 * HEIGHT_SCALE;
+    const scale = TRAIL && TRAIL.height ? TRAIL.height : HEIGHT_SCALE;
+    return -S.world.profile.groundY(x * 40) / 40 * scale;
   }
 
   function slopeAt(x) {
@@ -160,6 +181,129 @@
   function scoreNow() {
     if (!S.bike) return 0;
     return Math.round(S.trickPoints + Math.max(0, S.bike.x) * 6);
+  }
+
+  function garageBike() {
+    const g = window.SENDIT_GARAGE;
+    return (g && g.bike()) || {
+      brand: 'SEND IT',
+      name: 'Freeride',
+      color: '#ff8a2a',
+      accent: '#ffcf6b',
+      rim: '#d6ceb9',
+      stats: { speed: 3, handling: 3, pop: 3 }
+    };
+  }
+
+  function garageKit() {
+    const g = window.SENDIT_GARAGE;
+    return (g && g.kit()) || {
+      jersey: '#216d72',
+      helmet: '#f2e7cd',
+      pants: '#151b17',
+      shoe: '#0d0b09'
+    };
+  }
+
+  function garageTrail() {
+    const g = window.SENDIT_GARAGE;
+    return (g && g.trail()) || {
+      id: 'dusk-ridge',
+      name: 'Dusk Ridge',
+      seed: 202611,
+      height: 1.35,
+      path: { a1: 18, w1: 72, a2: 30, w2: 185, a3: 2.2, w3: 27 },
+      trees: 1,
+      leafTint: '#d8d3c4',
+      grassTint: '#a9b596',
+      rockTint: '#ffffff',
+      trailTint: '#ffffff',
+      fog: '#c7b4a2',
+      fogNear: 120,
+      fogFar: 1400,
+      sun: '#ffbe7a',
+      sunIntensity: 2.05,
+      hemiSky: '#9db9d8',
+      hemiGround: '#30342a',
+      hemiIntensity: 0.46,
+      exposure: 0.92
+    };
+  }
+
+  function applyTrailConfig(trail) {
+    TRAIL = trail || garageTrail();
+    rainDirty = true;
+  }
+
+  function applyTrailSky() {
+    if (!renderer || !scene) return;
+    if (skyTex) skyTex.dispose();
+    if (envRT) envRT.dispose();
+    skyTex = makeSkyTexture();
+    scene.background = skyTex;
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    pmrem.compileEquirectangularShader();
+    envRT = pmrem.fromEquirectangular(skyTex);
+    scene.environment = envRT.texture;
+    pmrem.dispose();
+  }
+
+  function applyTrailTheme() {
+    if (!scene) return;
+    const t = TRAIL || garageTrail();
+    scene.fog = new THREE.Fog(t.fog || 0xc7b4a2, t.fogNear || 120, t.fogFar || 1400);
+    if (sunLight) {
+      sunLight.color.set(t.sun || 0xffbe7a);
+      sunLight.intensity = t.sunIntensity == null ? 2.05 : t.sunIntensity;
+    }
+    if (hemiLight) {
+      hemiLight.color.set(t.hemiSky || 0x9db9d8);
+      hemiLight.groundColor.set(t.hemiGround || 0x30342a);
+      hemiLight.intensity = t.hemiIntensity == null ? 0.46 : t.hemiIntensity;
+    }
+    if (fillLight) {
+      fillLight.intensity = (t.hemiIntensity == null ? 0.46 : t.hemiIntensity) * 0.45;
+    }
+    if (renderer) renderer.toneMappingExposure = t.exposure == null ? 0.92 : t.exposure;
+    if (M.trail) M.trail.color.set(t.trailTint || '#ffffff');
+    if (M.grass) M.grass.color.set(t.grassTint || '#a9b596');
+    if (M.rock) M.rock.color.set(t.rockTint || '#ffffff');
+    if (M.foliage) M.foliage.color.set(t.leafTint || '#ffffff');
+  }
+
+  function applyGarageLook() {
+    RIG = garageBike();
+    KIT = garageKit();
+    if (!M.frame) return;
+    M.frame.color.set(RIG.color);
+    M.accent.color.set(RIG.accent);
+    M.rim.color.set(RIG.rim);
+    M.jersey.color.set(KIT.jersey);
+    M.helmet.color.set(KIT.helmet);
+    M.pants.color.set(KIT.pants);
+    M.shoe.color.set(KIT.shoe || '#0d0b09');
+  }
+
+  function rigStats() {
+    if (!RIG) RIG = garageBike();
+    return RIG.stats || { speed: 3, handling: 3, pop: 3 };
+  }
+
+  function applyWind(material, amp) {
+    material.onBeforeCompile = (shader) => {
+      shader.uniforms.uWind = windUniform;
+      shader.vertexShader = `uniform float uWind;\n${shader.vertexShader}`;
+      shader.vertexShader = shader.vertexShader.replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>
+        #ifdef USE_INSTANCING
+          float windPhase = instanceMatrix[3].x * 0.17 + instanceMatrix[3].z * 0.11;
+          float windSway = sin(uWind * 1.35 + windPhase) * 0.62 + sin(uWind * 2.25 + windPhase * 1.7) * 0.38;
+          transformed.x += windSway * ${amp.toFixed(4)} * max(0.0, position.y);
+          transformed.z += windSway * ${(amp * 0.55).toFixed(4)} * max(0.0, position.y);
+        #endif`
+      );
+    };
   }
 
   /* ── PBR assets ──────────────────────────────────────────── */
@@ -220,16 +364,20 @@
     const ctx = c.getContext('2d');
     const w = c.width;
     const h = c.height;
+    const sky = (TRAIL && TRAIL.sky) || {};
+    const stops = sky.stops || [
+      [0, '#14233a'],
+      [0.24, '#2d4662'],
+      [0.43, '#6c8096'],
+      [0.52, '#b78b77'],
+      [0.58, '#e8ae7d'],
+      [0.64, '#f5cf9f'],
+      [0.7, '#cfb99a'],
+      [0.78, '#706f5c'],
+      [1, '#3c3e36']
+    ];
     const grad = ctx.createLinearGradient(0, 0, 0, h);
-    grad.addColorStop(0, '#14233a');
-    grad.addColorStop(0.24, '#2d4662');
-    grad.addColorStop(0.43, '#6c8096');
-    grad.addColorStop(0.52, '#b78b77');
-    grad.addColorStop(0.58, '#e8ae7d');
-    grad.addColorStop(0.64, '#f5cf9f');
-    grad.addColorStop(0.7, '#cfb99a');
-    grad.addColorStop(0.78, '#706f5c');
-    grad.addColorStop(1, '#3c3e36');
+    for (const [at, color] of stops) grad.addColorStop(at, color);
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, w, h);
 
@@ -248,25 +396,29 @@
       ctx.restore();
     };
 
-    cloud(w * 0.14, h * 0.33, 230, 34, 0.18, '235,222,220');
-    cloud(w * 0.34, h * 0.28, 300, 42, 0.14, '220,214,224');
-    cloud(w * 0.58, h * 0.36, 260, 30, 0.16, '255,216,188');
-    cloud(w * 0.86, h * 0.31, 210, 28, 0.12, '222,210,214');
-    cloud(w * 0.24, h * 0.48, 340, 38, 0.2, '255,190,150');
-    cloud(w * 0.72, h * 0.5, 280, 34, 0.22, '255,207,163');
-    cloud(w * 0.17, h * 0.21, 430, 26, 0.17, '220,214,226');
-    cloud(w * 0.6, h * 0.24, 500, 28, 0.13, '230,222,229');
-    cloud(w * 0.05, h * 0.43, 360, 40, 0.3, '255,205,175');
-    cloud(w * 0.46, h * 0.42, 430, 42, 0.24, '255,208,176');
-    cloud(w * 0.92, h * 0.44, 310, 34, 0.28, '255,210,180');
+    const cloudCol = sky.cloud || '235,222,220';
+    const warmCol = sky.warmCloud || '255,205,175';
+    const sunCol = sky.sunGlow || '255,190,125';
+
+    cloud(w * 0.14, h * 0.33, 230, 34, 0.18, cloudCol);
+    cloud(w * 0.34, h * 0.28, 300, 42, 0.14, cloudCol);
+    cloud(w * 0.58, h * 0.36, 260, 30, 0.16, warmCol);
+    cloud(w * 0.86, h * 0.31, 210, 28, 0.12, cloudCol);
+    cloud(w * 0.24, h * 0.48, 340, 38, 0.2, warmCol);
+    cloud(w * 0.72, h * 0.5, 280, 34, 0.22, warmCol);
+    cloud(w * 0.17, h * 0.21, 430, 26, 0.17, cloudCol);
+    cloud(w * 0.6, h * 0.24, 500, 28, 0.13, cloudCol);
+    cloud(w * 0.05, h * 0.43, 360, 40, 0.3, warmCol);
+    cloud(w * 0.46, h * 0.42, 430, 42, 0.24, warmCol);
+    cloud(w * 0.92, h * 0.44, 310, 34, 0.28, warmCol);
 
     const sx = w * 0.72;
     const sy = h * 0.435;
     const glow = ctx.createRadialGradient(sx, sy, 8, sx, sy, h * 0.38);
-    glow.addColorStop(0, 'rgba(255,244,205,0.95)');
-    glow.addColorStop(0.13, 'rgba(255,223,161,0.5)');
-    glow.addColorStop(0.4, 'rgba(255,190,125,0.16)');
-    glow.addColorStop(1, 'rgba(255,190,125,0)');
+    glow.addColorStop(0, `rgba(${sunCol},0.92)`);
+    glow.addColorStop(0.13, `rgba(${sunCol},0.45)`);
+    glow.addColorStop(0.4, `rgba(${sunCol},0.15)`);
+    glow.addColorStop(1, `rgba(${sunCol},0)`);
     ctx.fillStyle = glow;
     ctx.fillRect(0, 0, w, h);
     ctx.beginPath();
@@ -304,16 +456,11 @@
     camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.08, 1200);
     camera.position.set(-7, 4, 0);
 
-    const skyTex = makeSkyTexture();
-    scene.background = skyTex;
-    const pmrem = new THREE.PMREMGenerator(renderer);
-    pmrem.compileEquirectangularShader();
-    const envRT = pmrem.fromEquirectangular(skyTex);
-    scene.environment = envRT.texture;
-    pmrem.dispose();
+    applyTrailConfig();
+    applyTrailSky();
 
-    const hemi = new THREE.HemisphereLight(0x9db9d8, 0x30342a, 0.46);
-    scene.add(hemi);
+    hemiLight = new THREE.HemisphereLight(0x9db9d8, 0x30342a, 0.46);
+    scene.add(hemiLight);
 
     sunLight = new THREE.DirectionalLight(0xffbe7a, 2.05);
     sunLight.position.set(-64, 40, 50);
@@ -331,9 +478,9 @@
     scene.add(sunLight);
     scene.add(sunLight.target);
 
-    const fill = new THREE.DirectionalLight(0x8fb4d6, 0.22);
-    fill.position.set(50, 30, 60);
-    scene.add(fill);
+    fillLight = new THREE.DirectionalLight(0x8fb4d6, 0.22);
+    fillLight.position.set(50, 30, 60);
+    scene.add(fillLight);
 
     initTextures();
     M.trail = texMaterial('trail', {
@@ -363,6 +510,11 @@
       roughness: 0.38,
       metalness: 0.28
     });
+    M.accent = new THREE.MeshStandardMaterial({
+      color: 0xffcf6b,
+      roughness: 0.42,
+      metalness: 0.3
+    });
     M.dark = new THREE.MeshStandardMaterial({ color: 0x17130e, roughness: 0.86, metalness: 0.2 });
     M.tire = new THREE.MeshStandardMaterial({ color: 0x15120e, roughness: 0.96 });
     M.rim = new THREE.MeshStandardMaterial({ color: 0xd6ceb9, roughness: 0.35, metalness: 0.55 });
@@ -374,8 +526,25 @@
     M.flag = new THREE.MeshStandardMaterial({ color: 0xff8a2a, roughness: 0.75 });
     M.flag2 = new THREE.MeshStandardMaterial({ color: 0xf7f1e1, roughness: 0.75 });
 
+    applyWind(M.foliage, 0.05);
+    applyTrailTheme();
+    applyGarageLook();
+    if (window.SENDIT_GARAGE) {
+      window.SENDIT_GARAGE.onChange = (sel) => {
+        const prev = TRAIL && TRAIL.id;
+        applyGarageLook();
+        if (sel && sel.trail && sel.trail.id !== prev) {
+          applyTrailConfig(sel.trail);
+          applyTrailTheme();
+          applyTrailSky();
+          if (S.active) resetRide(true);
+        }
+      };
+    }
+
     createBike();
     initDust();
+    initRain();
     if (bikeRoot) {
       bikeRoot.traverse((o) => {
         if (o.isMesh) {
@@ -527,6 +696,69 @@
     dust.geometry.attributes.size.needsUpdate = true;
   }
 
+  function initRain() {
+    const count = 240;
+    const positions = new Float32Array(count * 2 * 3);
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const mat = new THREE.LineBasicMaterial({
+      color: 0xb9ccd8,
+      transparent: true,
+      opacity: 0.34,
+      depthWrite: false,
+      fog: true
+    });
+    rain = new THREE.LineSegments(geo, mat);
+    rain.frustumCulled = false;
+    rain.visible = false;
+    rain.userData.drops = [];
+    for (let i = 0; i < count; i++) {
+      rain.userData.drops.push({ x: 0, y: 0, z: 0, speed: 18 + Math.random() * 16 });
+      positions[i * 6 + 1] = -1000;
+    }
+    scene.add(rain);
+  }
+
+  function updateRain(dt) {
+    if (!rain) return;
+    const active = TRAIL && TRAIL.rain;
+    rain.visible = !!active;
+    if (!active) return;
+    const cam = camera.position;
+    const pos = rain.geometry.attributes.position.array;
+    const drops = rain.userData.drops;
+    if (rainDirty) {
+      for (const d of drops) {
+        d.x = cam.x + (Math.random() - 0.5) * 58;
+        d.y = cam.y + Math.random() * 32 - 10;
+        d.z = cam.z + (Math.random() - 0.5) * 58;
+      }
+      rainDirty = false;
+    }
+    for (let i = 0; i < drops.length; i++) {
+      const d = drops[i];
+      d.y -= d.speed * dt;
+      d.x += 3.5 * dt;
+      if (d.y < cam.y - 16) {
+        d.y = cam.y + 16 + Math.random() * 12;
+        d.x = cam.x + (Math.random() - 0.5) * 58;
+        d.z = cam.z + (Math.random() - 0.5) * 58;
+      }
+      if (d.x > cam.x + 30) d.x -= 60;
+      if (d.x < cam.x - 30) d.x += 60;
+      if (d.z > cam.z + 30) d.z -= 60;
+      if (d.z < cam.z - 30) d.z += 60;
+      const o = i * 6;
+      pos[o] = d.x;
+      pos[o + 1] = d.y;
+      pos[o + 2] = d.z;
+      pos[o + 3] = d.x + 0.06;
+      pos[o + 4] = d.y + 0.92;
+      pos[o + 5] = d.z;
+    }
+    rain.geometry.attributes.position.needsUpdate = true;
+  }
+
   function buildRibbon(u0, u1, cols, material, uvScale, kind) {
     const xStart = -30;
     const rows = Math.floor((MAX_X - xStart) / STEP_X) + 1;
@@ -586,7 +818,7 @@
 
     const profile = new Terrain(seed);
     profile.extendTo(MAX_X * 40 + 5000);
-    S.world = { seed, profile };
+    S.world = { seed, profile, trailId: TRAIL && TRAIL.id };
 
     // PBR terrain built as textured ribbons: singletrack, grass shoulders, rock slopes.
     const trailMat = M.trail.clone();
@@ -601,6 +833,8 @@
     buildRibbon(6.8, 26, 12, grassMat, 3.0, 'grass');
     buildRibbon(-90, -26, 14, rockMat, 6, 'rock');
     buildRibbon(26, 90, 14, rockMat, 6, 'rock');
+    buildEdgeStrip(-7.8, -6.1);
+    buildEdgeStrip(6.1, 7.8);
 
     addTrees();
     addRocks();
@@ -731,10 +965,11 @@
 
   function addTrees() {
     const trees = [];
-    for (let x = 8; x < MAX_X; x += 5.2) {
+    const treeDensity = (TRAIL && TRAIL.trees) || 1;
+    for (let x = 8; x < MAX_X; x += 5.2 / treeDensity) {
       for (const side of [-1, 1]) {
         const h = hash(x * 0.131 + side * 17.3);
-        if (h < 0.31) continue;
+        if (h < 0.31 / Math.min(1.6, treeDensity)) continue;
         const u = side * (10.5 + hash(x * 0.217 + side * 5.1) * 31);
         const y = terrainY(x) + sideY(u);
         const s = 0.6 + hash(x * 0.071 + side * 3.3) * 0.95;
@@ -755,13 +990,14 @@
     const tex = makeTreeTexture();
     const leafMat = new THREE.MeshStandardMaterial({
       map: tex,
-      color: 0xd8d3c4,
+      color: new THREE.Color((TRAIL && TRAIL.leafTint) || '#d8d3c4'),
       alphaTest: 0.32,
       side: THREE.DoubleSide,
       roughness: 0.98,
       metalness: 0,
       envMapIntensity: 0.25
     });
+    applyWind(leafMat, 0.014);
     const mesh = new THREE.InstancedMesh(geo, leafMat, count);
     const dummy = new THREE.Object3D();
     const leafColors = [
@@ -938,6 +1174,7 @@
         geo.setIndex(indices);
         const mat = new THREE.MeshBasicMaterial({
           vertexColors: true,
+          color: new THREE.Color((TRAIL && TRAIL.mountainTint) || '#ffffff'),
           side: THREE.DoubleSide,
           fog: false
         });
@@ -1055,6 +1292,81 @@
     return tex;
   }
 
+  function makeGrassEdgeAlpha() {
+    if (grassEdgeAlpha) return grassEdgeAlpha;
+    const c = document.createElement('canvas');
+    c.width = 8;
+    c.height = 64;
+    const g = c.getContext('2d');
+    const grad = g.createLinearGradient(0, 0, 0, 64);
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(0.45, '#cfcfcf');
+    grad.addColorStop(1, '#000000');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 8, 64);
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    tex.minFilter = THREE.LinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    grassEdgeAlpha = tex;
+    return tex;
+  }
+
+  function buildEdgeStrip(u0, u1) {
+    const xStart = -30;
+    const rows = Math.floor((MAX_X - xStart) / STEP_X) + 1;
+    const cols = 4;
+    const positions = new Float32Array(rows * cols * 3);
+    const normals = new Float32Array(rows * cols * 3);
+    const uvs = new Float32Array(rows * cols * 2);
+    const n = new THREE.Vector3();
+    let p = 0;
+    let q = 0;
+    for (let i = 0; i < rows; i++) {
+      const x = xStart + i * STEP_X;
+      const base = terrainY(x);
+      const z0 = pathZ(x);
+      for (let j = 0; j < cols; j++) {
+        const u = u0 + ((u1 - u0) * j) / (cols - 1);
+        positions[p++] = x;
+        positions[p++] = base + sideY(u) + 0.02;
+        positions[p++] = z0 + u;
+        terrainNormalAt(x, u, n);
+        normals[p - 3] = n.x;
+        normals[p - 2] = n.y;
+        normals[p - 1] = n.z;
+        const v = clamp((Math.abs(u) - 6.1) / 1.7, 0, 1);
+        uvs[q++] = x / 2.8;
+        uvs[q++] = v;
+      }
+    }
+    const indices = [];
+    for (let i = 0; i < rows - 1; i++) {
+      for (let j = 0; j < cols - 1; j++) {
+        const a = i * cols + j;
+        const b = a + 1;
+        const d = (i + 1) * cols + j;
+        const e = d + 1;
+        indices.push(a, b, d, b, e, d);
+      }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+    geo.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    const mat = M.grass.clone();
+    mat.vertexColors = false;
+    mat.alphaMap = makeGrassEdgeAlpha();
+    mat.transparent = true;
+    mat.depthWrite = false;
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.receiveShadow = true;
+    mesh.renderOrder = 1;
+    worldGroup.add(mesh);
+  }
+
   function addGrassTufts() {
     const items = [];
     for (let x = 4; x < MAX_X; x += 1.9) {
@@ -1082,6 +1394,7 @@
       metalness: 0,
       envMapIntensity: 0.2
     });
+    applyWind(mat, 0.05);
     const mesh = new THREE.InstancedMesh(geo, mat, count);
     const dummy = new THREE.Object3D();
     const cols = [new THREE.Color('#c3c9a6'), new THREE.Color('#a8b58b'), new THREE.Color('#d3d6b2'), new THREE.Color('#94a67d')];
@@ -1394,7 +1707,7 @@
   }
 
   function resetRide(newWorld = false) {
-    if (!S.world || newWorld) buildWorld(randomSeed());
+    if (!S.world || newWorld) buildWorld((TRAIL && TRAIL.seed) || randomSeed());
     const startX = 3;
     const y = bikeGroundY(startX);
     S.bike = {
@@ -1427,6 +1740,8 @@
     S.shake = 0;
     S.goTimer = 0;
     S.finishBonus = false;
+    S.coinsEarned = 0;
+    S.rewarded = false;
     S.input.jumpBuffer = 0;
     ui.setBails(3);
     updateBikeVisual(0);
@@ -1547,12 +1862,19 @@
     dom.overEyebrow.textContent = finished ? '3D RUN COMPLETE' : '3D RUN OVER';
     dom.overTitle.textContent = finished ? 'FINISH' : 'WIPEOUT';
     const total = scoreNow();
+    if (!S.rewarded) {
+      S.rewarded = true;
+      S.coinsEarned = window.SENDIT_GARAGE
+        ? window.SENDIT_GARAGE.awardRun(total, Math.max(0, S.bike.x), '3D')
+        : 0;
+    }
     const isBest = total > S.best3d;
     if (isBest) {
       S.best3d = total;
       saveBest3d(total);
     }
     dom.finalScore.textContent = fmt(total);
+    if (dom.coins) dom.coins.textContent = `+${fmt(S.coinsEarned)} COINS`;
     dom.finalDist.textContent = `${fmt(Math.max(0, S.bike.x))} m`;
     dom.finalTrick.textContent = S.bestTrick ? S.bestTrick.name : '—';
     dom.finalBest.textContent = fmt(S.best3d);
@@ -1583,6 +1905,7 @@
 
   function update(dt) {
     S.input.jumpBuffer = Math.max(0, S.input.jumpBuffer - dt);
+    windUniform.value += dt;
 
     if (S.mode === 'intro') {
       updateIntro(dt);
@@ -1619,6 +1942,7 @@
 
     updateShadow(dt);
     updateDust(dt);
+    updateRain(dt);
     S.uiTimer -= dt;
     if (S.uiTimer <= 0 && (S.mode === 'playing' || S.mode === 'countdown' || S.mode === 'crashed')) {
       S.uiTimer = 0.07;
@@ -1641,6 +1965,10 @@
   function updatePlaying(dt) {
     const b = S.bike;
     if (!b) return;
+    const st = rigStats();
+    const speedMod = 1 + (st.speed - 3) * 0.025;
+    const handleMod = 0.9 + st.handling * 0.04;
+    const popMod = 0.9 + st.pop * 0.04;
 
     // smooth steering
     const steerTarget = (S.input.right ? 1 : 0) - (S.input.left ? 1 : 0);
@@ -1649,21 +1977,21 @@
     if (b.onGround) {
       const slope = slopeAt(b.x);
       const norm = Math.sqrt(1 + slope * slope);
-      let accel = GRAVITY * (-slope) / norm + 3.2;
+      let accel = GRAVITY * (-slope) / norm + 3.2 * speedMod;
       if (S.input.down) accel -= 7;
       accel -= 0.0058 * b.vx * b.vx;
       let boosting = false;
       if (S.input.boost && S.boost > 0.01) {
-        accel += 6.5;
+        accel += 6.5 * speedMod;
         S.boost = Math.max(0, S.boost - dt * 0.36);
         boosting = true;
         if (!S.boosting) game.sfx.boost();
       }
       S.boosting = boosting;
-      const cap = boosting ? 33 : 27;
+      const cap = (boosting ? 33 : 27) * speedMod;
       b.vx = clamp(b.vx + accel * dt, 0, cap);
 
-      const lateralSpeed = 3.7 + b.vx * 0.07;
+      const lateralSpeed = (3.7 + b.vx * 0.07) * handleMod;
       b.lateral += b.steer * lateralSpeed * dt;
       if (b.lateral > 6.6) {
         b.lateral = 6.6;
@@ -1724,15 +2052,15 @@
       b.airTime += dt;
 
       let flipTarget = 0;
-      if (S.input.up) flipTarget = 7.0;
-      else if (S.input.down) flipTarget = -7.0;
+      if (S.input.up) flipTarget = 7.0 * popMod;
+      else if (S.input.down) flipTarget = -7.0 * popMod;
       b.flipVel += (flipTarget - b.flipVel) * Math.min(1, dt * 9);
       if (!flipTarget) b.flipVel *= Math.exp(-4.2 * dt);
       b.flipRot += b.flipVel * dt;
 
       let spinTarget = 0;
-      if (S.input.left) spinTarget = 6.2;
-      else if (S.input.right) spinTarget = -6.2;
+      if (S.input.left) spinTarget = 6.2 * popMod;
+      else if (S.input.right) spinTarget = -6.2 * popMod;
       b.spinVel += (spinTarget - b.spinVel) * Math.min(1, dt * 8);
       if (!spinTarget) b.spinVel *= Math.exp(-4.5 * dt);
       b.spinRot += b.spinVel * dt;
@@ -1802,7 +2130,8 @@
     b.wheelSpin += 0.5;
     if (impact > 1.2) spawnDust(b.x, b.y + 0.12, b.z, impact > 5 ? 14 : 7, 0.7);
 
-    if (rem > 1.12) {
+    const st = rigStats();
+    if (rem > 1.06 + st.handling * 0.02) {
       b.flipRot = 0;
       b.spinRot = 0;
       crash();

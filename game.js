@@ -191,6 +191,7 @@
       this.master = null;
       this.noiseBuf = null;
       this.wind = null;
+      this.roll = null;
       this.windOn = false;
       this.muted = loadMuted();
     }
@@ -227,6 +228,22 @@
       gain.connect(this.master);
       src.start();
       this.wind = { src, filt, gain };
+
+      // rolling gravel / tyre noise
+      const rsrc = this.ctx.createBufferSource();
+      rsrc.buffer = buffer;
+      rsrc.loop = true;
+      const rfilt = this.ctx.createBiquadFilter();
+      rfilt.type = 'bandpass';
+      rfilt.frequency.value = 780;
+      rfilt.Q.value = 0.5;
+      const rgain = this.ctx.createGain();
+      rgain.gain.value = 0;
+      rsrc.connect(rfilt);
+      rfilt.connect(rgain);
+      rgain.connect(this.master);
+      rsrc.start();
+      this.roll = { src: rsrc, filt: rfilt, gain: rgain };
     }
 
     setMuted(m) {
@@ -250,6 +267,9 @@
       if (this.wind && this.ctx) {
         this.wind.gain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.25);
       }
+      if (this.roll && this.ctx) {
+        this.roll.gain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.18);
+      }
     }
 
     updateWind(speed, airborne) {
@@ -257,6 +277,11 @@
       const level = this.windOn ? clamp((speed - 140) / 950, 0, 1) * 0.13 + (airborne ? 0.015 : 0) : 0;
       this.wind.gain.gain.setTargetAtTime(level, this.ctx.currentTime, 0.14);
       this.wind.filt.frequency.setTargetAtTime(300 + speed * 1.25, this.ctx.currentTime, 0.2);
+      if (this.roll) {
+        const rollLevel = this.windOn && !airborne ? clamp((speed - 120) / 900, 0, 1) * 0.055 : 0;
+        this.roll.gain.gain.setTargetAtTime(rollLevel, this.ctx.currentTime, 0.09);
+        this.roll.filt.frequency.setTargetAtTime(520 + speed * 0.9, this.ctx.currentTime, 0.12);
+      }
     }
 
     tone(freq, dur, opts = {}) {
@@ -533,6 +558,7 @@
     menuBest: $('menuBest'),
     over: $('over'),
     finalScore: $('finalScore'),
+    runCoins: $('runCoins'),
     finalDist: $('finalDist'),
     finalTrick: $('finalTrick'),
     finalBest: $('finalBest'),
@@ -613,6 +639,7 @@
       dom.toast.classList.remove('show');
       dom.trickFeed.classList.remove('pop');
       dom.finalScore.textContent = fmt(game.totalScore);
+      if (dom.runCoins) dom.runCoins.textContent = `+${fmt(game.coinsEarned || 0)} COINS`;
       dom.finalDist.textContent = `${fmt(Math.floor(game.distance))} m`;
       dom.finalTrick.textContent = game.bestTrick ? game.bestTrick.name : '—';
       dom.finalTrick.title = game.bestTrick ? `${game.bestTrick.name} · ${fmt(game.bestTrick.points)} pts` : '';
@@ -690,6 +717,7 @@
       this.palette = getPalette(0);
       this.zone = 0;
       this.newBest = false;
+      this.coinsEarned = 0;
       this.streakAlpha = 0;
       this.cloudSprite = makeCloudSprite();
       this.online = false;
@@ -1359,6 +1387,7 @@
     }
 
     finishRun() {
+      if (this.state === 'over') return;
       this.state = 'over';
       this.sfx.stopWind();
       this.distance = Math.max(0, this.bike.x * METERS_PER_PX);
@@ -1366,6 +1395,10 @@
         this.bestScore = this.totalScore;
         this.newBest = true;
         saveBest(this.bestScore);
+      }
+      this.coinsEarned = 0;
+      if (window.SENDIT_GARAGE) {
+        this.coinsEarned = window.SENDIT_GARAGE.awardRun(this.totalScore, this.distance, '2D');
       }
       if (this.onGameOver) this.onGameOver(this, this.newBest);
     }
@@ -1860,14 +1893,18 @@
       ctx.translate(b.x, b.y);
       ctx.rotate(b.angle);
 
-      const frame = opts.frameColor || (isLocal ? this.playerColor : null) || pal.accent;
+      const garage = isLocal && window.SENDIT_GARAGE ? window.SENDIT_GARAGE : null;
+      const rig = garage ? garage.bike() : null;
+      const fit = garage ? garage.kit() : null;
+      const frame = opts.frameColor || (isLocal ? (rig ? rig.color : this.playerColor) : null) || pal.accent;
       const dark = '#17130e';
-      const rim = '#d6ceb9';
-      const jersey = '#216d72';
-      const jerseyHi = '#2e8c90';
-      const helmet = '#f2e7cd';
+      const rim = rig ? rig.rim : '#d6ceb9';
+      const jersey = fit ? fit.jersey : '#216d72';
+      const jerseyHi = mixHex(jersey, '#ffffff', 0.18);
+      const helmet = fit ? fit.helmet : '#f2e7cd';
       const skin = '#c98e66';
-      const pants = '#151b17';
+      const pants = fit ? fit.pants : '#151b17';
+      const shoe = fit ? fit.shoe : '#0d0b09';
       const spin = b.wheelSpin;
 
       const wheel = (cx, cy) => {
@@ -1968,7 +2005,7 @@
 
       // legs
       stroke([hip, knee, foot], 5.2, pants);
-      stroke([foot, [foot[0] + 4, foot[1] + 1.5]], 3.6, '#0d0b09');
+      stroke([foot, [foot[0] + 4, foot[1] + 1.5]], 3.6, shoe);
 
       // torso
       stroke([hip, shoulder], 10.5, jersey);
@@ -2055,7 +2092,7 @@
         ctx.lineTo(b.x, by + bh + 5);
         ctx.closePath();
         ctx.fill();
-        ctx.fillStyle = opts.frameColor || pal.accent;
+        ctx.fillStyle = opts.frameColor || frame;
         ctx.beginPath();
         ctx.arc(bx + 8, by + bh / 2, 3, 0, TAU);
         ctx.fill();
