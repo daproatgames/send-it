@@ -614,6 +614,7 @@
   function save() {
     try {
       localStorage.setItem(KEY, JSON.stringify(state));
+      window.dispatchEvent(new Event('sendit:save'));
     } catch (e) {
       /* ignore */
     }
