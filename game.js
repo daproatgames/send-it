@@ -559,6 +559,7 @@
     over: $('over'),
     finalScore: $('finalScore'),
     runCoins: $('runCoins'),
+    runMeta: $('runMeta'),
     finalDist: $('finalDist'),
     finalTrick: $('finalTrick'),
     finalBest: $('finalBest'),
@@ -640,6 +641,10 @@
       dom.trickFeed.classList.remove('pop');
       dom.finalScore.textContent = fmt(game.totalScore);
       if (dom.runCoins) dom.runCoins.textContent = `+${fmt(game.coinsEarned || 0)} COINS`;
+      if (dom.runMeta) {
+        dom.runMeta.textContent = game.runMeta || '';
+        dom.runMeta.classList.toggle('show', !!game.runMeta);
+      }
       dom.finalDist.textContent = `${fmt(Math.floor(game.distance))} m`;
       dom.finalTrick.textContent = game.bestTrick ? game.bestTrick.name : '—';
       dom.finalTrick.title = game.bestTrick ? `${game.bestTrick.name} · ${fmt(game.bestTrick.points)} pts` : '';
@@ -718,6 +723,8 @@
       this.zone = 0;
       this.newBest = false;
       this.coinsEarned = 0;
+      this.runStats = { flips: 0, grabs: 0, tricks: 0 };
+      this.runMeta = '';
       this.streakAlpha = 0;
       this.cloudSprite = makeCloudSprite();
       this.online = false;
@@ -857,6 +864,8 @@
       this.bestTrick = null;
       this.crashTimer = 0;
       this.newBest = false;
+      this.runStats = { flips: 0, grabs: 0, tricks: 0 };
+      this.runMeta = '';
       this.zone = 0;
       this.palette = getPalette(0);
       this.clearInput();
@@ -886,6 +895,8 @@
       this.bestTrick = null;
       this.crashTimer = 0;
       this.newBest = false;
+      this.runStats = { flips: 0, grabs: 0, tricks: 0 };
+      this.runMeta = '';
       this.zone = 0;
       this.palette = getPalette(0);
       this.remotes.clear();
@@ -1247,6 +1258,11 @@
       }
 
       if (!name) return;
+      if (this.runStats) {
+        this.runStats.flips += flips;
+        if (grabbed) this.runStats.grabs += 1;
+        this.runStats.tricks += 1;
+      }
 
       if (this.comboTimer > 0) this.chain += 1;
       else this.chain = 1;
@@ -1397,8 +1413,24 @@
         saveBest(this.bestScore);
       }
       this.coinsEarned = 0;
+      this.runMeta = '';
       if (window.SENDIT_GARAGE) {
         this.coinsEarned = window.SENDIT_GARAGE.awardRun(this.totalScore, this.distance, '2D');
+        const report = window.SENDIT_GARAGE.reportRun({
+          mode: '2D',
+          score: this.totalScore,
+          distance: this.distance,
+          coins: this.coinsEarned,
+          flips: this.runStats.flips,
+          grabs: this.runStats.grabs,
+          finish: 0
+        });
+        if (report.levelUp) this.runMeta = `RIDER LEVEL ${window.SENDIT_GARAGE.levelInfo().level}`;
+        if (report.completed && report.completed.length) this.runMeta += `${this.runMeta ? ' · ' : ''}CONTRACT READY`;
+        if (report.unlocked && report.unlocked.length) {
+          const names = report.unlocked.map((a) => a.name).join(' · ');
+          this.runMeta += `${this.runMeta ? ' · ' : ''}BADGE: ${names}`;
+        }
       }
       if (this.onGameOver) this.onGameOver(this, this.newBest);
     }

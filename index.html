@@ -10,7 +10,7 @@
 <meta property="og:description" content="A fast, arcade downhill mountain biking trick game. Flip it. Whip it. Stomp it — solo or online with friends." />
 <meta property="og:type" content="website" />
 <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-<link rel="stylesheet" href="styles.css?v=16" />
+<link rel="stylesheet" href="styles.css?v=18" />
 </head>
 <body>
 <canvas id="game" aria-label="Downhill mountain biking game"></canvas>
@@ -119,6 +119,7 @@
     <h2 class="over-title">WIPEOUT</h2>
     <div class="big-score" id="finalScore">0</div>
     <div class="run-coins" id="runCoins">+0 COINS</div>
+    <div class="run-meta" id="runMeta"></div>
     <div class="over-stats">
       <div><span class="label">DISTANCE</span><b id="finalDist">0 m</b></div>
       <div><span class="label">BEST TRICK</span><b id="finalTrick">—</b></div>
@@ -165,6 +166,7 @@
     <h2 class="over-title" id="over3dTitle">WIPEOUT</h2>
     <div class="big-score" id="final3d">0</div>
     <div class="run-coins" id="runCoins3d">+0 COINS</div>
+    <div class="run-meta" id="runMeta3d"></div>
     <div class="over-stats">
       <div><span class="label">DISTANCE</span><b id="finalDist3d">0 m</b></div>
       <div><span class="label">BEST TRICK</span><b id="finalTrick3d">—</b></div>
@@ -179,13 +181,46 @@
   </div>
 </div>
 
-<button id="exit3dBtn" class="exit3d hidden" type="button">EXIT 3D</button>
+<button id="exit3dBtn" class="exit3d hidden" type="button">PAUSE</button>
 <div id="land3d" class="land3d hidden">
   <span class="label">LANDING</span>
   <div class="land3d-track"><i id="land3dBar"></i></div>
   <b id="land3dDeg">0°</b>
 </div>
 <div id="count3d" class="count3d hidden" aria-hidden="true"><b id="count3dNum">3</b><small>GET READY</small></div>
+
+<div id="pause3d" class="overlay over pause3d hidden">
+  <div class="over-card pause-card">
+    <div class="eyebrow eyebrow-center">RIDE PAUSED</div>
+    <h2 class="over-title">PAUSE</h2>
+    <div class="pause-trail"><span class="label">TRAIL</span><b data-garage-trail>Dusk Ridge</b></div>
+    <div class="over-actions pause-actions">
+      <button id="pauseResume" class="btn primary" type="button">RESUME <span class="arr">→</span></button>
+      <button id="pauseRestart" class="btn ghost" type="button">RESTART</button>
+      <button id="pauseGarage" class="btn ghost" type="button">GARAGE</button>
+      <button id="pauseTrails" class="btn ghost" type="button">TRAILS</button>
+      <button id="pauseQuit" class="btn ghost" type="button">QUIT</button>
+    </div>
+    <div class="pause-settings">
+      <button id="pauseQuality" class="toggle-row" type="button"><span>QUALITY</span><b>HIGH</b></button>
+      <button id="pauseGhost" class="toggle-row" type="button"><span>PB GHOST</span><b>ON</b></button>
+      <button id="pauseShake" class="toggle-row" type="button"><span>CAMERA SHAKE</span><b>ON</b></button>
+    </div>
+    <button id="pausePhoto" class="btn ghost pause-photo" type="button">PHOTO MODE</button>
+    <p class="hint">Press <kbd>ESC</kbd> / <kbd>P</kbd> to resume</p>
+  </div>
+</div>
+
+<div id="photo3d" class="photo3d hidden">
+  <div class="photo-top">
+    <span>PHOTO MODE</span>
+    <span>DRAG TO ORBIT · SCROLL TO ZOOM</span>
+  </div>
+  <div class="photo-actions">
+    <button id="photoSave" class="btn primary" type="button">SAVE PNG</button>
+    <button id="photoExit" class="btn ghost" type="button">EXIT PHOTO</button>
+  </div>
+</div>
 
 <div id="garage" class="overlay garage hidden">
   <div class="garage-card">
@@ -201,14 +236,24 @@
       <button id="garageClose" class="modal-close" type="button" aria-label="Close">✕</button>
     </div>
     <p class="garage-sub">Earn coins by finishing runs, sending tricks, and going the distance. Everything is saved on this device.</p>
+    <div class="garage-level">
+      <div class="garage-level-head"><span class="label">RIDER LV <b data-garage-level>1</b></span><span data-garage-xp-text>0 / 400 XP</span></div>
+      <div class="level-track"><i data-garage-xp></i></div>
+    </div>
     <div class="garage-tabs">
       <button class="garage-tab active" type="button" data-garage-tab="bikes">BIKES</button>
       <button class="garage-tab" type="button" data-garage-tab="gear">RIDER KITS</button>
       <button class="garage-tab" type="button" data-garage-tab="trails">TRAILS</button>
+      <button class="garage-tab" type="button" data-garage-tab="parts">PARTS</button>
+      <button class="garage-tab" type="button" data-garage-tab="contracts">CONTRACTS</button>
+      <button class="garage-tab" type="button" data-garage-tab="badges">BADGES</button>
     </div>
     <div id="garageBikes" class="garage-grid"></div>
     <div id="garageGear" class="garage-grid is-hidden"></div>
     <div id="garageTrails" class="garage-grid is-hidden"></div>
+    <div id="garageParts" class="garage-grid is-hidden"></div>
+    <div id="garageContracts" class="garage-list is-hidden"></div>
+    <div id="garageBadges" class="garage-grid is-hidden"></div>
     <p class="garage-note" id="garageNote">Ride to earn coins. New bikes change your 3D speed, handling, and pop.</p>
   </div>
 </div>
@@ -304,10 +349,10 @@
 </div>
 
 <script src="vendor/mqtt.min.js"></script>
-<script src="garage.js?v=1"></script>
-<script src="game.js?v=14"></script>
+<script src="garage.js?v=3"></script>
+<script src="game.js?v=16"></script>
 <script src="online.js?v=5"></script>
 <script src="vendor/three.min.js"></script>
-<script src="ride3d.js?v=15"></script>
+<script src="ride3d.js?v=17"></script>
 </body>
 </html>

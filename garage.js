@@ -301,8 +301,249 @@
       hemiGround: '#2b302c',
       hemiIntensity: 0.6,
       exposure: 0.82
+    },
+    {
+      id: 'night-shift',
+      name: 'Night Shift',
+      region: 'AFTER DARK',
+      difficulty: 'FLOW',
+      blurb: 'The same mountain after dark. Cold air, a narrow headlight beam, and glowing gates.',
+      seed: 606060,
+      height: 1.3,
+      path: { a1: 16, w1: 64, a2: 28, w2: 178, a3: 2.4, w3: 26 },
+      trees: 1.25,
+      night: true,
+      leafTint: '#8fa0a8',
+      grassTint: '#6f8578',
+      rockTint: '#8d9aa3',
+      trailTint: '#9fa8ad',
+      mountainTint: '#6d7b8a',
+      preview: ['#0d1a2b', '#31465c', '#263241', '#6d7a83'],
+      sky: {
+        stops: [
+          [0, '#050b14'],
+          [0.24, '#0a1526'],
+          [0.43, '#16263b'],
+          [0.52, '#25364a'],
+          [0.58, '#3a4d60'],
+          [0.64, '#556779'],
+          [0.7, '#44515b'],
+          [0.78, '#222a30'],
+          [1, '#0a0f13']
+        ],
+        cloud: '150,170,190',
+        warmCloud: '120,140,165',
+        sunGlow: '170,200,230',
+        stars: true,
+        moon: true
+      },
+      fog: '#0f1a24',
+      fogNear: 35,
+      fogFar: 560,
+      sun: '#8fb2d6',
+      sunIntensity: 0.65,
+      hemiSky: '#51688a',
+      hemiGround: '#10151a',
+      hemiIntensity: 0.32,
+      exposure: 0.72
+    },
+    {
+      id: 'alpine-dawn',
+      name: 'Alpine Dawn',
+      region: 'HIGH ALPINE',
+      difficulty: 'FLOW',
+      blurb: 'First light on the high ridge. Long views, cold air, and fast open turns.',
+      seed: 880022,
+      height: 1.42,
+      path: { a1: 19, w1: 76, a2: 32, w2: 195, a3: 2.1, w3: 28 },
+      trees: 0.85,
+      leafTint: '#c6d6b2',
+      grassTint: '#a9b58a',
+      rockTint: '#d8d2c0',
+      trailTint: '#e1c3a0',
+      mountainTint: '#d6c3b2',
+      preview: ['#3d6c9c', '#f3c9a0', '#7c8d88', '#c8a883'],
+      sky: {
+        stops: [
+          [0, '#2d5b86'],
+          [0.24, '#6a92b0'],
+          [0.43, '#b9cbd4'],
+          [0.52, '#e7c7b3'],
+          [0.58, '#f6c9a2'],
+          [0.64, '#ffdcb4'],
+          [0.7, '#d8c1a5'],
+          [0.78, '#7f7566'],
+          [1, '#3d3a33']
+        ],
+        cloud: '244,234,220',
+        warmCloud: '255,221,188',
+        sunGlow: '255,208,170'
+      },
+      fog: '#e3c9b0',
+      fogNear: 160,
+      fogFar: 1500,
+      sun: '#ffd2a0',
+      sunIntensity: 2.3,
+      hemiSky: '#c7d9e6',
+      hemiGround: '#4a4438',
+      hemiIntensity: 0.55,
+      exposure: 0.98
     }
   ];
+
+  const PART_INFO = [
+    {
+      id: 'wheels',
+      name: 'Wheels',
+      stat: 'speed',
+      statName: 'SPEED',
+      icon: '◉',
+      desc: 'Faster rolling wheels. Each level adds top speed and acceleration.',
+      costs: [300, 700, 1400]
+    },
+    {
+      id: 'suspension',
+      name: 'Suspension',
+      stat: 'handling',
+      statName: 'HANDLING',
+      icon: '≈',
+      desc: 'More control and a wider landing window. Each level adds handling.',
+      costs: [300, 700, 1400]
+    },
+    {
+      id: 'drivetrain',
+      name: 'Drivetrain',
+      stat: 'pop',
+      statName: 'POP',
+      icon: '⚙',
+      desc: 'Lighter rotating mass. Each level adds pop for flips and spins.',
+      costs: [300, 700, 1400]
+    }
+  ];
+
+  const CHALLENGE_TEMPLATES = [
+    { id: 'score', event: 'score', target: 6000, reward: 140, xp: 90, title: 'Score 6,000 in one run', desc: 'Best single-run score today.' },
+    { id: 'distance', event: 'distance', target: 5000, reward: 120, xp: 80, title: 'Ride 5,000 m today', desc: 'Total distance across all runs.' },
+    { id: 'flips', event: 'flips', target: 5, reward: 150, xp: 100, title: 'Land 5 flips today', desc: 'Backflips and frontflips.' },
+    { id: 'grabs', event: 'grabs', target: 4, reward: 130, xp: 90, title: 'Land 4 style grabs', desc: 'Hold grab in the air and land it.' },
+    { id: 'rides', event: 'rides', target: 3, reward: 110, xp: 70, title: 'Complete 3 runs today', desc: 'Any 2D or 3D run counts.' },
+    { id: 'coins', event: 'coins', target: 500, reward: 160, xp: 100, title: 'Earn 500 coins today', desc: 'Coins from runs and contracts.' },
+    { id: 'finish', event: 'finish', target: 1, reward: 170, xp: 110, title: 'Finish a 3D trail', desc: 'Cross the finish gate.' },
+    { id: 'trail', event: 'trail', reward: 190, xp: 120, title: 'Ride {trail}', desc: 'Complete a run on this trail.' }
+  ];
+
+  const ACHIEVEMENTS = [
+    { id: 'first-send', name: 'First Send', desc: 'Complete your first run', target: 1, reward: 100, get: (l) => l.runs },
+    { id: 'dirt-rich', name: 'Dirt Rich', desc: 'Earn 5,000 coins', target: 5000, reward: 250, get: (l) => l.coins },
+    { id: 'distance-demon', name: 'Distance Demon', desc: 'Ride 50,000 m', target: 50000, reward: 300, get: (l) => l.distance },
+    { id: 'flip-machine', name: 'Flip Machine', desc: 'Land 50 flips', target: 50, reward: 300, get: (l) => l.flips },
+    { id: 'trail-hunter', name: 'Trail Hunter', desc: 'Finish every 3D trail', target: TRAILS.length, reward: 400, get: (l) => Object.keys(l.trails || {}).length },
+    { id: 'high-roller', name: 'High Roller', desc: 'Score 20,000 in one run', target: 20000, reward: 400, get: (l) => l.bestScore },
+    { id: 'level-ten', name: 'Level 10', desc: 'Reach rider level 10', target: 10, reward: 500, get: () => levelInfo().level }
+  ];
+
+  function levelInfo() {
+    const level = Math.floor(Math.sqrt(Math.max(0, state.xp) / 400)) + 1;
+    const base = 400 * (level - 1) * (level - 1);
+    const next = 400 * level * level;
+    return { level, xp: state.xp, base, next, pct: next > base ? (state.xp - base) / (next - base) : 0 };
+  }
+
+  function dayKey() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  function dayHash(text) {
+    let h = 2166136261;
+    for (let i = 0; i < text.length; i++) {
+      h ^= text.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+
+  function ensureDaily() {
+    const day = dayKey();
+    if (state.challenges && state.challenges.day === day && Array.isArray(state.challenges.list)) return;
+    const seed = dayHash(day);
+    const picks = [];
+    const pool = CHALLENGE_TEMPLATES.filter((c) => c.id !== 'trail');
+    for (let i = 0; i < 2; i++) {
+      let idx = (seed + i * 7) % pool.length;
+      while (picks.includes(pool[idx])) idx = (idx + 1) % pool.length;
+      picks.push(pool[idx]);
+    }
+    const trail = TRAILS[seed % TRAILS.length];
+    const trailTemplate = CHALLENGE_TEMPLATES.find((c) => c.id === 'trail');
+    picks.push({
+      ...trailTemplate,
+      target: 1,
+      trail: trail.id,
+      title: `Ride ${trail.name}`,
+      desc: 'Complete a run on this trail.'
+    });
+    state.challenges = {
+      day,
+      list: picks.map((c, i) => ({
+        id: `${c.id}-${i}`,
+        event: c.event,
+        target: c.target,
+        reward: c.reward,
+        xp: c.xp,
+        title: c.title,
+        desc: c.desc,
+        trail: c.trail || null,
+        progress: 0,
+        claimed: false
+      }))
+    };
+    save();
+  }
+
+  function ensureLifetime() {
+    if (!state.lifetime) {
+      state.lifetime = {
+        runs: 0,
+        distance: 0,
+        coins: 0,
+        flips: 0,
+        grabs: 0,
+        bestScore: 0,
+        finishes: 0,
+        trails: {}
+      };
+    }
+  }
+
+  function ensureAchievements() {
+    if (!state.achievements) state.achievements = {};
+  }
+
+  function checkLevelUp(before) {
+    const after = levelInfo().level;
+    if (after > before) {
+      state.balance += after * 50;
+      return after;
+    }
+    return 0;
+  }
+
+  function checkAchievements() {
+    ensureLifetime();
+    ensureAchievements();
+    const unlocked = [];
+    for (const a of ACHIEVEMENTS) {
+      if (state.achievements[a.id]) continue;
+      if (a.get(state.lifetime) >= a.target) {
+        state.achievements[a.id] = true;
+        state.balance += a.reward;
+        state.xp += 100;
+        unlocked.push(a);
+      }
+    }
+    return unlocked;
+  }
 
   function load() {
     const fallback = {
@@ -311,7 +552,14 @@
       bike: 'dust-runner',
       kit: 'factory',
       trail: 'dusk-ridge',
-      runs: 0
+      runs: 0,
+      xp: 0,
+      parts: { wheels: 0, suspension: 0, drivetrain: 0 },
+      challenges: { day: '', list: [] },
+      lifetime: { runs: 0, distance: 0, coins: 0, flips: 0, grabs: 0, bestScore: 0, finishes: 0, trails: {} },
+      achievements: {},
+      settings: { quality: 'high', ghost: true, shake: true },
+      records: {}
     };
     try {
       const raw = localStorage.getItem(KEY);
@@ -323,13 +571,31 @@
         bike: typeof parsed.bike === 'string' ? parsed.bike : 'dust-runner',
         kit: typeof parsed.kit === 'string' ? parsed.kit : 'factory',
         trail: typeof parsed.trail === 'string' ? parsed.trail : 'dusk-ridge',
-        runs: Number.isFinite(parsed.runs) ? Math.max(0, Math.floor(parsed.runs)) : 0
+        runs: Number.isFinite(parsed.runs) ? Math.max(0, Math.floor(parsed.runs)) : 0,
+        xp: Number.isFinite(parsed.xp) ? Math.max(0, Math.floor(parsed.xp)) : 0,
+        parts: {
+          wheels: Math.max(0, Math.min(3, Number(parsed.parts?.wheels) || 0)),
+          suspension: Math.max(0, Math.min(3, Number(parsed.parts?.suspension) || 0)),
+          drivetrain: Math.max(0, Math.min(3, Number(parsed.parts?.drivetrain) || 0))
+        },
+        challenges: parsed.challenges && typeof parsed.challenges === 'object' ? parsed.challenges : { day: '', list: [] },
+        lifetime: parsed.lifetime && typeof parsed.lifetime === 'object' ? parsed.lifetime : fallback.lifetime,
+        achievements: parsed.achievements && typeof parsed.achievements === 'object' ? parsed.achievements : {},
+        settings: parsed.settings && typeof parsed.settings === 'object' ? parsed.settings : fallback.settings,
+        records: parsed.records && typeof parsed.records === 'object' ? parsed.records : {}
       };
       if (!state.owned.includes('dust-runner')) state.owned.push('dust-runner');
       if (!state.owned.includes('factory')) state.owned.push('factory');
       if (!BIKES.some((b) => b.id === state.bike && state.owned.includes(b.id))) state.bike = 'dust-runner';
       if (!KITS.some((k) => k.id === state.kit && state.owned.includes(k.id))) state.kit = 'factory';
       if (!TRAILS.some((t) => t.id === state.trail)) state.trail = 'dusk-ridge';
+      const defs = fallback.lifetime;
+      const life = state.lifetime;
+      for (const key of ['runs', 'distance', 'coins', 'flips', 'grabs', 'bestScore', 'finishes']) {
+        if (!Number.isFinite(life[key])) life[key] = defs[key];
+      }
+      if (!life.trails || typeof life.trails !== 'object') life.trails = {};
+      state.settings = { ...fallback.settings, ...(state.settings || {}) };
       return state;
     } catch (e) {
       return fallback;
@@ -373,6 +639,11 @@
     return Math.max(0, Math.floor(n)).toLocaleString('en-US');
   }
 
+  function fmtTime(sec) {
+    const s = Math.max(0, Number(sec) || 0);
+    return `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
+  }
+
   function notify() {
     if (typeof api.onChange === 'function') api.onChange({ bike: bike(), kit: kit(), trail: trail() });
     syncLabels();
@@ -397,6 +668,16 @@
     });
     const sub = document.getElementById('start3dSub');
     if (sub && trl.blurb) sub.textContent = trl.blurb;
+    const lv = levelInfo();
+    document.querySelectorAll('[data-garage-level]').forEach((el) => {
+      el.textContent = String(lv.level);
+    });
+    document.querySelectorAll('[data-garage-xp]').forEach((el) => {
+      el.style.width = `${Math.min(100, Math.max(0, lv.pct * 100))}%`;
+    });
+    document.querySelectorAll('[data-garage-xp-text]').forEach((el) => {
+      el.textContent = `${fmt(lv.xp - lv.base)} / ${fmt(lv.next - lv.base)} XP`;
+    });
   }
 
   api.bike = bike;
@@ -404,6 +685,123 @@
   api.trail = trail;
   api.fmt = fmt;
   api.owned = owned;
+  api.parts = PART_INFO;
+  api.achievements = ACHIEVEMENTS;
+  api.levelInfo = levelInfo;
+  api.daily = () => {
+    ensureDaily();
+    return state.challenges.list;
+  };
+
+  api.stats = function stats() {
+    const b = bike();
+    const p = state.parts || {};
+    return {
+      speed: b.stats.speed + (p.wheels || 0) * 0.35,
+      handling: b.stats.handling + (p.suspension || 0) * 0.35,
+      pop: b.stats.pop + (p.drivetrain || 0) * 0.35
+    };
+  };
+
+  api.setSetting = function setSetting(key, value) {
+    if (!state.settings) state.settings = {};
+    state.settings[key] = value;
+    save();
+    return value;
+  };
+
+  api.reportRun = function reportRun(summary = {}) {
+    ensureDaily();
+    ensureLifetime();
+    ensureAchievements();
+    const beforeLevel = levelInfo().level;
+    const distance = Math.max(0, Number(summary.distance) || 0);
+    const score = Math.max(0, Number(summary.score) || 0);
+    const coins = Math.max(0, Number(summary.coins) || 0);
+    const flips = Math.max(0, Number(summary.flips) || 0);
+    const grabs = Math.max(0, Number(summary.grabs) || 0);
+    const finish = summary.finish ? 1 : 0;
+    const life = state.lifetime;
+    life.runs += 1;
+    life.distance += distance;
+    life.coins += coins;
+    life.flips += flips;
+    life.grabs += grabs;
+    life.bestScore = Math.max(life.bestScore, score);
+    if (finish) {
+      life.finishes += 1;
+      if (summary.trail) life.trails[summary.trail] = true;
+    }
+    if (summary.mode === '3D' && summary.trail) {
+      if (!state.records) state.records = {};
+      const list = Array.isArray(state.records[summary.trail]) ? state.records[summary.trail] : [];
+      list.push({
+        score,
+        time: Math.max(0, Number(summary.time) || 0),
+        bike: state.bike,
+        date: dayKey()
+      });
+      list.sort((a, b) => b.score - a.score || a.time - b.time);
+      state.records[summary.trail] = list.slice(0, 5);
+    }
+    const xpGain = Math.floor(score / 30) + Math.floor(distance / 40) + (finish ? 100 : 0);
+    state.xp += xpGain;
+    const completed = [];
+    for (const c of state.challenges.list) {
+      if (c.claimed) continue;
+      let value = null;
+      if (c.event === 'score') value = score;
+      else if (c.event === 'distance') value = distance;
+      else if (c.event === 'flips') value = flips;
+      else if (c.event === 'grabs') value = grabs;
+      else if (c.event === 'coins') value = coins;
+      else if (c.event === 'finish') value = finish;
+      else if (c.event === 'trail') value = summary.trail === c.trail ? 1 : 0;
+      else if (c.event === 'rides') value = 1;
+      if (value == null) continue;
+      if (c.event === 'score') c.progress = Math.max(c.progress, value);
+      else c.progress += value;
+      if (c.progress >= c.target) completed.push(c);
+    }
+    const levelUp = checkLevelUp(beforeLevel);
+    const unlocked = checkAchievements();
+    save();
+    syncLabels();
+    return { xp: xpGain, completed, levelUp, unlocked };
+  };
+
+  api.claim = function claim(id) {
+    ensureDaily();
+    const c = state.challenges.list.find((x) => x.id === id);
+    if (!c || c.claimed || c.progress < c.target) return false;
+    c.claimed = true;
+    const beforeLevel = levelInfo().level;
+    state.balance += c.reward;
+    state.xp += c.xp;
+    checkLevelUp(beforeLevel);
+    checkAchievements();
+    save();
+    syncLabels();
+    render();
+    return true;
+  };
+
+  api.buyPart = function buyPart(id) {
+    const part = PART_INFO.find((p) => p.id === id);
+    if (!part) return false;
+    const level = state.parts[id] || 0;
+    if (level >= 3) return false;
+    const cost = part.costs[level];
+    if (state.balance < cost) return false;
+    state.balance -= cost;
+    state.parts[id] = level + 1;
+    save();
+    syncLabels();
+    render();
+    return true;
+  };
+
+  api.partLevel = (id) => (state.parts && state.parts[id]) || 0;
 
   api.awardRun = function awardRun(score = 0, distance = 0, mode = '2D') {
     const base = Math.floor(Math.max(0, Number(score) || 0) / 40);
@@ -490,6 +888,9 @@
   let bikesEl = null;
   let gearEl = null;
   let trailsEl = null;
+  let partsEl = null;
+  let contractsEl = null;
+  let badgesEl = null;
   let noteEl = null;
   let activeTab = 'bikes';
   let noteTimer = 0;
@@ -620,6 +1021,7 @@
 
   function trailCard(t) {
     const isSelected = state.trail === t.id;
+    const rec = ((state.records && state.records[t.id]) || [])[0];
     return `
       <article class="rig-card trail-card ${isSelected ? 'is-equipped' : ''}">
         <div class="rig-preview trail-preview">
@@ -629,11 +1031,78 @@
         <div class="rig-brand">${t.region}</div>
         <h3 class="rig-name">${t.name}</h3>
         <p class="rig-blurb">${t.blurb}</p>
+        <div class="trail-record ${rec ? '' : 'empty'}">${rec ? `PB ${fmt(rec.score)} · ${fmtTime(rec.time)}` : 'NO RUNS YET'}</div>
         <div class="rig-foot">
           <span class="rig-price">${isSelected ? 'CURRENT TRAIL' : 'OPEN'}</span>
           ${isSelected
             ? '<button class="rig-btn is-selected" type="button" disabled>RIDING</button>'
             : `<button class="rig-btn" type="button" data-trail="${t.id}">RIDE HERE</button>`}
+        </div>
+      </article>
+    `;
+  }
+
+  function partCard(p) {
+    const level = state.parts[p.id] || 0;
+    const maxed = level >= 3;
+    const cost = maxed ? 0 : p.costs[level];
+    const poor = state.balance < cost;
+    const pips = [1, 2, 3].map((n) => `<i class="${n <= level ? 'on' : ''}"></i>`).join('');
+    return `
+      <article class="rig-card part-card ${maxed ? 'is-equipped' : ''}">
+        <div class="part-head">
+          <span class="part-icon">${p.icon}</span>
+          <div><div class="rig-brand">BIKE PART</div><h3 class="rig-name">${p.name}</h3></div>
+        </div>
+        <p class="rig-blurb">${p.desc}</p>
+        <div class="part-pips">${pips}<span>${level}/3</span></div>
+        <div class="rig-foot">
+          <span class="rig-price">${maxed ? 'MAXED' : `<i class="coin-mark mini">S</i> ${fmt(cost)}`}</span>
+          ${maxed
+            ? '<button class="rig-btn is-selected" type="button" disabled>MAX</button>'
+            : `<button class="rig-btn ${poor ? 'cant-afford' : 'buy'}" type="button" data-part="${p.id}" ${poor ? 'disabled' : ''}>${poor ? 'LOCKED' : 'UPGRADE'}</button>`}
+        </div>
+      </article>
+    `;
+  }
+
+  function contractCard(c) {
+    const pct = Math.min(100, (c.progress / c.target) * 100);
+    const done = c.progress >= c.target;
+    const button = c.claimed
+      ? '<button class="rig-btn is-selected" type="button" disabled>CLAIMED</button>'
+      : done
+        ? `<button class="rig-btn buy" type="button" data-claim="${c.id}">CLAIM</button>`
+        : '<button class="rig-btn" type="button" disabled>IN PROGRESS</button>';
+    return `
+      <article class="contract-card ${done && !c.claimed ? 'is-ready' : ''} ${c.claimed ? 'is-claimed' : ''}">
+        <div class="contract-top">
+          <span class="label">DAILY CONTRACT</span>
+          <span class="contract-reward"><i class="coin-mark mini">S</i> ${fmt(c.reward)} · ${c.xp} XP</span>
+        </div>
+        <h3>${c.title}</h3>
+        <p>${c.desc}</p>
+        <div class="contract-track"><i style="width:${pct}%"></i></div>
+        <div class="contract-foot">
+          <span>${fmt(Math.min(c.progress, c.target))} / ${fmt(c.target)}</span>
+          ${button}
+        </div>
+      </article>
+    `;
+  }
+
+  function badgeCard(a) {
+    const unlocked = !!state.achievements[a.id];
+    const value = a.get(state.lifetime || {});
+    const pct = Math.min(100, (value / a.target) * 100);
+    return `
+      <article class="badge-card ${unlocked ? 'is-unlocked' : ''}">
+        <div class="badge-icon">${unlocked ? '★' : '☆'}</div>
+        <div class="badge-body">
+          <h3>${a.name}</h3>
+          <p>${a.desc}</p>
+          <div class="contract-track"><i style="width:${pct}%"></i></div>
+          <span class="badge-progress">${fmt(Math.min(value, a.target))} / ${fmt(a.target)}</span>
         </div>
       </article>
     `;
@@ -654,21 +1123,50 @@
     trailsEl.innerHTML = TRAILS.map(trailCard).join('');
   }
 
+  function renderParts() {
+    if (!partsEl) return;
+    partsEl.innerHTML = PART_INFO.map(partCard).join('');
+  }
+
+  function renderContracts() {
+    if (!contractsEl) return;
+    ensureDaily();
+    contractsEl.innerHTML = state.challenges.list.map(contractCard).join('');
+  }
+
+  function renderBadges() {
+    if (!badgesEl) return;
+    ensureLifetime();
+    badgesEl.innerHTML = ACHIEVEMENTS.map(badgeCard).join('');
+  }
+
   function render() {
     renderBikes();
     renderKits();
     renderTrails();
+    renderParts();
+    renderContracts();
+    renderBadges();
     syncLabels();
   }
 
   function setTab(tab) {
-    activeTab = tab === 'gear' ? 'gear' : tab === 'trails' ? 'trails' : 'bikes';
+    const allowed = ['bikes', 'gear', 'trails', 'parts', 'contracts', 'badges'];
+    activeTab = allowed.includes(tab) ? tab : 'bikes';
     document.querySelectorAll('[data-garage-tab]').forEach((btn) => {
       btn.classList.toggle('active', btn.dataset.garageTab === activeTab);
     });
-    if (bikesEl) bikesEl.classList.toggle('is-hidden', activeTab !== 'bikes');
-    if (gearEl) gearEl.classList.toggle('is-hidden', activeTab !== 'gear');
-    if (trailsEl) trailsEl.classList.toggle('is-hidden', activeTab !== 'trails');
+    const map = {
+      bikes: bikesEl,
+      gear: gearEl,
+      trails: trailsEl,
+      parts: partsEl,
+      contracts: contractsEl,
+      badges: badgesEl
+    };
+    for (const [key, el] of Object.entries(map)) {
+      if (el) el.classList.toggle('is-hidden', key !== activeTab);
+    }
   }
 
   function showNote(msg) {
@@ -703,6 +1201,8 @@
     const buyKitId = e.target.closest('[data-buykit]')?.dataset.buykit;
     const wearId = e.target.closest('[data-wear]')?.dataset.wear;
     const trailId = e.target.closest('[data-trail]')?.dataset.trail;
+    const partId = e.target.closest('[data-part]')?.dataset.part;
+    const claimId = e.target.closest('[data-claim]')?.dataset.claim;
     if (buyId) {
       const item = BIKES.find((b) => b.id === buyId);
       if (api.buy(buyId)) showNote(`${item.brand} ${item.name} added to the garage.`);
@@ -728,6 +1228,17 @@
         const item = TRAILS.find((t) => t.id === trailId);
         showNote(`${item.name} selected. Drop in to ride it.`);
       }
+      return;
+    }
+    if (partId) {
+      const item = PART_INFO.find((p) => p.id === partId);
+      if (api.buyPart(partId)) showNote(`${item.name} upgraded.`);
+      else showNote('Not enough coins yet — go ride.');
+      return;
+    }
+    if (claimId) {
+      if (api.claim(claimId)) showNote('Contract claimed. Coins and XP added.');
+      return;
     }
   }
 
@@ -736,6 +1247,9 @@
     bikesEl = document.getElementById('garageBikes');
     gearEl = document.getElementById('garageGear');
     trailsEl = document.getElementById('garageTrails');
+    partsEl = document.getElementById('garageParts');
+    contractsEl = document.getElementById('garageContracts');
+    badgesEl = document.getElementById('garageBadges');
     noteEl = document.getElementById('garageNote');
     if (!garageEl) return;
 

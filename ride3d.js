@@ -28,6 +28,7 @@
     overTitle: $('over3dTitle'),
     finalScore: $('final3d'),
     coins: $('runCoins3d'),
+    runMeta: $('runMeta3d'),
     finalDist: $('finalDist3d'),
     finalTrick: $('finalTrick3d'),
     finalBest: $('finalBest3d'),
@@ -35,6 +36,19 @@
     againBtn: $('again3dBtn'),
     menuBtn: $('menu3dBtn'),
     exitBtn: $('exit3dBtn'),
+    pause: $('pause3d'),
+    pauseResume: $('pauseResume'),
+    pauseRestart: $('pauseRestart'),
+    pauseGarage: $('pauseGarage'),
+    pauseTrails: $('pauseTrails'),
+    pauseQuit: $('pauseQuit'),
+    pauseQuality: $('pauseQuality'),
+    pauseGhost: $('pauseGhost'),
+    pauseShake: $('pauseShake'),
+    pausePhoto: $('pausePhoto'),
+    photo: $('photo3d'),
+    photoSave: $('photoSave'),
+    photoExit: $('photoExit'),
     count: $('count3d'),
     countNum: $('count3dNum'),
     land: $('land3d'),
@@ -50,6 +64,11 @@
   const S = {
     active: false,
     looping: false,
+    paused: false,
+    photo: false,
+    photoYaw: 0.9,
+    photoPitch: 0.18,
+    photoDist: 7.5,
     mode: 'idle', // intro | countdown | playing | crashed | over
     countdown: 0,
     goTimer: 0,
@@ -69,6 +88,9 @@
     best3d: loadBest3d(),
     coinsEarned: 0,
     rewarded: false,
+    runStats: { flips: 0, spins: 0, grabs: 0, tricks: 0, finish: 0 },
+    runMeta: '',
+    runTime: 0,
     crashTimer: 0,
     shake: 0,
     time: 0,
@@ -106,6 +128,14 @@
   let fillLight = null;
   let rain = null;
   let rainDirty = true;
+  let ghostRoot = null;
+  let ghostMat = null;
+  let ghostData = null;
+  let ghostIndex = 0;
+  let ghostRec = [];
+  let ghostTimer = 0;
+  let ghostBest = 0;
+  let headlight = null;
   const windUniform = { value: 0 };
   const DUST_MAX = 140;
   const dustParts = [];
@@ -269,6 +299,119 @@
     if (M.grass) M.grass.color.set(t.grassTint || '#a9b596');
     if (M.rock) M.rock.color.set(t.rockTint || '#ffffff');
     if (M.foliage) M.foliage.color.set(t.leafTint || '#ffffff');
+    if (headlight) {
+      headlight.visible = !!t.night;
+      headlight.intensity = t.night ? 4.8 : 0;
+    }
+  }
+
+  function gameSettings() {
+    return (window.SENDIT_GARAGE && window.SENDIT_GARAGE.state && window.SENDIT_GARAGE.state.settings) || {};
+  }
+
+  function applyQuality() {
+    if (!renderer) return;
+    const q = gameSettings().quality || 'high';
+    const cap = q === 'high' ? 2 : 1.25;
+    renderer.setPixelRatio(Math.min(cap, window.devicePixelRatio || 1));
+    renderer.setSize(window.innerWidth, window.innerHeight, false);
+    if (sunLight) {
+      const size = q === 'high' ? (window.innerWidth < 820 ? 1024 : 2048) : 1024;
+      if (sunLight.shadow.map) {
+        sunLight.shadow.map.dispose();
+        sunLight.shadow.map = null;
+      }
+      sunLight.shadow.mapSize.set(size, size);
+    }
+    if (rain) rain.visible = false;
+  }
+
+  function updatePauseLabels() {
+    const s = gameSettings();
+    if (dom.pauseQuality) dom.pauseQuality.querySelector('b').textContent = (s.quality || 'high').toUpperCase();
+    if (dom.pauseGhost) dom.pauseGhost.querySelector('b').textContent = s.ghost === false ? 'OFF' : 'ON';
+    if (dom.pauseShake) dom.pauseShake.querySelector('b').textContent = s.shake === false ? 'OFF' : 'ON';
+  }
+
+  function pauseRide() {
+    if (!S.active || S.paused || S.mode === 'over') return;
+    S.paused = true;
+    S.input.left = false;
+    S.input.right = false;
+    S.input.up = false;
+    S.input.down = false;
+    S.input.grab = false;
+    S.input.boost = false;
+    game.sfx.stopWind();
+    updatePauseLabels();
+    dom.pause.classList.remove('hidden');
+    dom.exitBtn.classList.add('hidden');
+    dom.touch.classList.add('hidden');
+  }
+
+  function resumeRide() {
+    if (!S.active) return;
+    S.paused = false;
+    dom.pause.classList.add('hidden');
+    if (S.mode !== 'over') dom.exitBtn.classList.remove('hidden');
+    if (game.touchMode && (S.mode === 'playing' || S.mode === 'countdown')) dom.touch.classList.remove('hidden');
+    S.last = performance.now();
+    if (S.mode === 'playing') game.sfx.startWind();
+  }
+
+  function restartRide() {
+    S.paused = false;
+    dom.pause.classList.add('hidden');
+    resetRide(true);
+    startCountdown();
+  }
+
+  function updatePhotoCamera() {
+    if (!S.bike) return;
+    const b = S.bike;
+    const target = new THREE.Vector3(b.x, b.y + 1.15, b.z);
+    const cp = Math.cos(S.photoPitch);
+    camera.position.set(
+      target.x + Math.cos(S.photoYaw) * cp * S.photoDist,
+      target.y + Math.sin(S.photoPitch) * S.photoDist,
+      target.z + Math.sin(S.photoYaw) * cp * S.photoDist
+    );
+    camera.lookAt(target);
+  }
+
+  function enterPhotoMode() {
+    if (!S.bike) return;
+    S.photo = true;
+    S.paused = true;
+    dom.pause.classList.add('hidden');
+    dom.photo.classList.remove('hidden');
+    document.body.classList.add('photo-mode');
+    game.sfx.stopWind();
+    updatePhotoCamera();
+  }
+
+  function exitPhotoMode() {
+    S.photo = false;
+    document.body.classList.remove('photo-mode');
+    dom.photo.classList.add('hidden');
+    dom.pause.classList.remove('hidden');
+    S.paused = true;
+  }
+
+  function savePhoto() {
+    if (!renderer || !scene || !camera) return;
+    renderer.render(scene, camera);
+    try {
+      const url = renderer.domElement.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'send-it-photo.png';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (e) {
+      /* ignore */
+    }
   }
 
   function applyGarageLook() {
@@ -286,6 +429,8 @@
 
   function rigStats() {
     if (!RIG) RIG = garageBike();
+    const g = window.SENDIT_GARAGE;
+    if (g && typeof g.stats === 'function') return g.stats();
     return RIG.stats || { speed: 3, handling: 3, pop: 3 };
   }
 
@@ -412,6 +557,24 @@
     cloud(w * 0.46, h * 0.42, 430, 42, 0.24, warmCol);
     cloud(w * 0.92, h * 0.44, 310, 34, 0.28, warmCol);
 
+    if (sky.stars) {
+      let starSeed = 90210;
+      const srnd = () => {
+        starSeed = (starSeed * 1664525 + 1013904223) >>> 0;
+        return starSeed / 4294967296;
+      };
+      for (let i = 0; i < 240; i++) {
+        const x = srnd() * w;
+        const y = srnd() * h * 0.46;
+        const a = 0.18 + srnd() * 0.72;
+        const r = 0.5 + srnd() * 1.3;
+        ctx.fillStyle = `rgba(226,238,255,${a})`;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, TAU);
+        ctx.fill();
+      }
+    }
+
     const sx = w * 0.72;
     const sy = h * 0.435;
     const glow = ctx.createRadialGradient(sx, sy, 8, sx, sy, h * 0.38);
@@ -423,7 +586,7 @@
     ctx.fillRect(0, 0, w, h);
     ctx.beginPath();
     ctx.arc(sx, sy, h * 0.027, 0, TAU);
-    ctx.fillStyle = '#fff4ce';
+    ctx.fillStyle = sky.moon ? '#e8f1fb' : '#fff4ce';
     ctx.fill();
 
     const tex = new THREE.CanvasTexture(c);
@@ -543,8 +706,22 @@
     }
 
     createBike();
+    if (bikeRoot) {
+      headlight = new THREE.SpotLight(0xfff1d0, 0, 52, 0.58, 0.4, 1.2);
+      headlight.position.set(0.45, 1.5, 0);
+      headlight.target.position.set(16, 0.4, 0);
+      headlight.visible = false;
+      bikeRoot.add(headlight);
+      bikeRoot.add(headlight.target);
+      if (TRAIL && TRAIL.night) {
+        headlight.visible = true;
+        headlight.intensity = 4.8;
+      }
+    }
     initDust();
     initRain();
+    initGhostModel();
+    applyQuality();
     if (bikeRoot) {
       bikeRoot.traverse((o) => {
         if (o.isMesh) {
@@ -558,7 +735,8 @@
 
   function onResize() {
     if (!renderer) return;
-    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    const cap = (gameSettings().quality || 'high') === 'high' ? 2 : 1.25;
+    renderer.setPixelRatio(Math.min(cap, window.devicePixelRatio || 1));
     renderer.setSize(window.innerWidth, window.innerHeight, false);
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
@@ -757,6 +935,107 @@
       pos[o + 5] = d.z;
     }
     rain.geometry.attributes.position.needsUpdate = true;
+  }
+
+  function initGhostModel() {
+    ghostMat = new THREE.MeshBasicMaterial({
+      color: 0x9fe8ff,
+      transparent: true,
+      opacity: 0.3,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    });
+    ghostRoot = new THREE.Group();
+    const add = (geo, x, y, z, rz = 0, ry = 0) => {
+      const m = new THREE.Mesh(geo, ghostMat);
+      m.position.set(x, y, z);
+      m.rotation.z = rz;
+      m.rotation.y = ry;
+      ghostRoot.add(m);
+      return m;
+    };
+    const wheelGeo = new THREE.TorusGeometry(0.33, 0.045, 5, 18);
+    add(wheelGeo, 0.78, 0.4, 0);
+    add(wheelGeo, -0.78, 0.4, 0);
+    add(new THREE.BoxGeometry(0.95, 0.055, 0.055), -0.02, 0.9, 0, 0.03);
+    add(new THREE.BoxGeometry(1.05, 0.055, 0.055), -0.05, 0.64, 0, 0.38);
+    add(new THREE.BoxGeometry(0.055, 0.5, 0.055), -0.35, 0.73, 0, -0.12);
+    add(new THREE.BoxGeometry(0.055, 0.62, 0.055), 0.52, 0.68, 0, -0.3);
+    add(new THREE.BoxGeometry(0.055, 0.05, 0.5), 0.55, 1.0, 0);
+    add(new THREE.CapsuleGeometry(0.16, 0.42, 3, 8), -0.02, 1.32, 0, 0.22);
+    add(new THREE.SphereGeometry(0.16, 10, 8), 0.22, 1.72, 0);
+    ghostRoot.scale.setScalar(1.12);
+    ghostRoot.visible = false;
+    scene.add(ghostRoot);
+  }
+
+  function ghostKey() {
+    return `sendit.ghost3d.v1.${(TRAIL && TRAIL.id) || 'dusk-ridge'}`;
+  }
+
+  function loadGhost() {
+    ghostData = null;
+    ghostBest = 0;
+    try {
+      const raw = localStorage.getItem(ghostKey());
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.samples) && parsed.samples.length > 4) {
+        ghostData = parsed;
+        ghostBest = Number(parsed.score) || 0;
+      }
+    } catch (e) {
+      ghostData = null;
+    }
+  }
+
+  function saveGhost(score) {
+    if (!Array.isArray(ghostRec) || ghostRec.length < 8) return;
+    if (score <= ghostBest) return;
+    const data = {
+      score,
+      trail: TRAIL && TRAIL.id,
+      bike: RIG && RIG.name,
+      samples: ghostRec.slice(0, 1600).map((s) => s.map((v) => Math.round(v * 100) / 100))
+    };
+    try {
+      localStorage.setItem(ghostKey(), JSON.stringify(data));
+      ghostData = data;
+      ghostBest = score;
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  function updateGhost() {
+    if (!ghostRoot) return;
+    if (gameSettings().ghost === false) {
+      ghostRoot.visible = false;
+      return;
+    }
+    const show = ghostData && S.bike && (S.mode === 'playing' || S.mode === 'crashed');
+    ghostRoot.visible = !!show;
+    if (!show) return;
+    const t = S.runTime;
+    const samples = ghostData.samples;
+    while (ghostIndex < samples.length - 2 && samples[ghostIndex + 1][0] <= t) ghostIndex++;
+    if (t > samples[samples.length - 1][0] + 0.4) {
+      ghostRoot.visible = false;
+      return;
+    }
+    const a = samples[ghostIndex];
+    const b = samples[Math.min(samples.length - 1, ghostIndex + 1)];
+    const span = Math.max(0.001, b[0] - a[0]);
+    const k = Math.max(0, Math.min(1, (t - a[0]) / span));
+    ghostRoot.position.set(
+      a[1] + (b[1] - a[1]) * k,
+      a[2] + (b[2] - a[2]) * k,
+      a[3] + (b[3] - a[3]) * k
+    );
+    let yawA = a[4];
+    let yawB = b[4];
+    let dy = ((yawB - yawA + Math.PI) % TAU + TAU) % TAU - Math.PI;
+    ghostRoot.rotation.set(0, yawA + dy * k, a[5] + (b[5] - a[5]) * k);
   }
 
   function buildRibbon(u0, u1, cols, material, uvScale, kind) {
@@ -1724,6 +2003,8 @@
       flipVel: 0,
       spinRot: 0,
       spinVel: 0,
+      whipRot: 0,
+      whipTime: 0,
       airTime: 0,
       grabTime: 0,
       basePitch: Math.atan(slopeAt(startX)),
@@ -1742,6 +2023,14 @@
     S.finishBonus = false;
     S.coinsEarned = 0;
     S.rewarded = false;
+    S.runStats = { flips: 0, spins: 0, grabs: 0, tricks: 0, finish: 0 };
+    S.runMeta = '';
+    S.runTime = 0;
+    loadGhost();
+    ghostRec = [];
+    ghostIndex = 0;
+    ghostTimer = 0;
+    if (ghostRoot) ghostRoot.visible = false;
     S.input.jumpBuffer = 0;
     ui.setBails(3);
     updateBikeVisual(0);
@@ -1784,9 +2073,19 @@
     return Math.round(n).toLocaleString('en-US');
   }
 
+  function fmtTime(sec) {
+    const safe = Math.max(0, sec);
+    const m = Math.floor(safe / 60);
+    const s = Math.floor(safe % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  }
+
   function hide3dOverlays() {
     dom.start.classList.add('hidden');
     dom.over.classList.add('hidden');
+    dom.pause.classList.add('hidden');
+    dom.photo.classList.add('hidden');
+    document.body.classList.remove('photo-mode');
     dom.count.classList.add('hidden');
     dom.count.classList.remove('show');
   }
@@ -1795,6 +2094,8 @@
     dom.start.classList.add('hidden');
     dom.start.style.display = 'none';
     dom.over.classList.add('hidden');
+    dom.pause.classList.add('hidden');
+    S.paused = false;
     dom.land.classList.add('hidden');
     ui.setHud(true);
     dom.bailsPanel.classList.remove('online-hide');
@@ -1829,6 +2130,9 @@
   function exitToMenu() {
     S.active = false;
     S.looping = false;
+    S.paused = false;
+    S.photo = false;
+    document.body.classList.remove('photo-mode');
     window.__3D_ACTIVE = false;
     document.body.classList.remove('mode3d');
     hide3dOverlays();
@@ -1864,9 +2168,30 @@
     const total = scoreNow();
     if (!S.rewarded) {
       S.rewarded = true;
+      S.runStats.finish = finished ? 1 : 0;
       S.coinsEarned = window.SENDIT_GARAGE
         ? window.SENDIT_GARAGE.awardRun(total, Math.max(0, S.bike.x), '3D')
         : 0;
+      S.runMeta = `${fmtTime(S.runTime)} · ${(TRAIL && TRAIL.name) || 'FREERIDE'}`;
+      if (window.SENDIT_GARAGE) {
+        const report = window.SENDIT_GARAGE.reportRun({
+          mode: '3D',
+          score: total,
+          distance: Math.max(0, S.bike.x),
+          coins: S.coinsEarned,
+          flips: S.runStats.flips,
+          grabs: S.runStats.grabs,
+          finish: S.runStats.finish,
+          trail: TRAIL && TRAIL.id,
+          time: S.runTime
+        });
+        if (report.levelUp) S.runMeta += ` · LV ${window.SENDIT_GARAGE.levelInfo().level}`;
+        if (report.completed && report.completed.length) S.runMeta += ' · CONTRACT READY';
+        if (report.unlocked && report.unlocked.length) {
+          S.runMeta += ` · BADGE: ${report.unlocked.map((a) => a.name).join(' · ')}`;
+        }
+      }
+      saveGhost(total);
     }
     const isBest = total > S.best3d;
     if (isBest) {
@@ -1875,6 +2200,10 @@
     }
     dom.finalScore.textContent = fmt(total);
     if (dom.coins) dom.coins.textContent = `+${fmt(S.coinsEarned)} COINS`;
+    if (dom.runMeta) {
+      dom.runMeta.textContent = S.runMeta || '';
+      dom.runMeta.classList.toggle('show', !!S.runMeta);
+    }
     dom.finalDist.textContent = `${fmt(Math.max(0, S.bike.x))} m`;
     dom.finalTrick.textContent = S.bestTrick ? S.bestTrick.name : '—';
     dom.finalBest.textContent = fmt(S.best3d);
@@ -1895,6 +2224,12 @@
       S.looping = false;
       return;
     }
+    if (S.paused) {
+      if (S.photo) updatePhotoCamera();
+      if (renderer) renderer.render(scene, camera);
+      requestAnimationFrame(frame);
+      return;
+    }
     const dt = Math.min(0.033, Math.max(0.001, (now - S.last) / 1000));
     S.last = now;
     S.time += dt;
@@ -1903,9 +2238,35 @@
     requestAnimationFrame(frame);
   }
 
+  function pollGamepad() {
+    const pads = navigator.getGamepads ? navigator.getGamepads() : null;
+    if (!pads) return;
+    const pad = pads[0];
+    if (!pad) return;
+    const state = S.padState || (S.padState = { left: false, right: false, up: false, down: false, grab: false, boost: false });
+    const ax = pad.axes[0] || 0;
+    const dz = 0.24;
+    const btn = (i) => !!(pad.buttons[i] && pad.buttons[i].pressed);
+    const set = (key, val) => {
+      if (val && !state[key]) S.input[key] = true;
+      if (!val && state[key]) S.input[key] = false;
+      state[key] = val;
+    };
+    set('left', ax < -dz);
+    set('right', ax > dz);
+    const jump = btn(0) || btn(12);
+    if (jump && !state.jump && (S.mode === 'playing' || S.mode === 'countdown')) S.input.jumpBuffer = 0.15;
+    state.jump = jump;
+    set('up', jump);
+    set('down', btn(1) || btn(13));
+    set('grab', btn(2) || btn(4));
+    set('boost', btn(7) || btn(5));
+  }
+
   function update(dt) {
     S.input.jumpBuffer = Math.max(0, S.input.jumpBuffer - dt);
     windUniform.value += dt;
+    pollGamepad();
 
     if (S.mode === 'intro') {
       updateIntro(dt);
@@ -1943,6 +2304,7 @@
     updateShadow(dt);
     updateDust(dt);
     updateRain(dt);
+    updateGhost();
     S.uiTimer -= dt;
     if (S.uiTimer <= 0 && (S.mode === 'playing' || S.mode === 'countdown' || S.mode === 'crashed')) {
       S.uiTimer = 0.07;
@@ -1965,6 +2327,20 @@
   function updatePlaying(dt) {
     const b = S.bike;
     if (!b) return;
+    S.runTime += dt;
+    ghostTimer -= dt;
+    if (ghostTimer <= 0 && ghostRec.length < 1600) {
+      ghostTimer = 0.1;
+      const gy = Math.atan(slopeAt(b.x));
+      ghostRec.push([
+        S.runTime,
+        b.x,
+        b.y,
+        b.z,
+        Math.atan2(-pathDZ(b.x), 1) + b.spinRot,
+        b.onGround ? gy : b.basePitch + b.flipRot
+      ]);
+    }
     const st = rigStats();
     const speedMod = 1 + (st.speed - 3) * 0.025;
     const handleMod = 0.9 + st.handling * 0.04;
@@ -2011,6 +2387,8 @@
         b.flipVel = 0;
         b.spinRot = 0;
         b.spinVel = 0;
+        b.whipRot = 0;
+        b.whipTime = 0;
         b.grabTime = 0;
         b.basePitch = Math.atan(slope);
         game.sfx.jump();
@@ -2059,8 +2437,15 @@
       b.flipRot += b.flipVel * dt;
 
       let spinTarget = 0;
-      if (S.input.left) spinTarget = 6.2 * popMod;
-      else if (S.input.right) spinTarget = -6.2 * popMod;
+      if (S.input.grab) {
+        const whipTarget = b.steer * 1.05;
+        b.whipRot += (whipTarget - b.whipRot) * Math.min(1, dt * 6);
+        if (Math.abs(b.whipRot) > 0.2) b.whipTime += dt;
+      } else {
+        if (S.input.left) spinTarget = 6.2 * popMod;
+        else if (S.input.right) spinTarget = -6.2 * popMod;
+        b.whipRot *= Math.exp(-6 * dt);
+      }
       b.spinVel += (spinTarget - b.spinVel) * Math.min(1, dt * 8);
       if (!spinTarget) b.spinVel *= Math.exp(-4.5 * dt);
       b.spinRot += b.spinVel * dt;
@@ -2151,19 +2536,25 @@
     const flips = Math.floor(Math.abs(b.flipRot) / TAU + 0.12);
     const spins = Math.floor(Math.abs(b.spinRot) / TAU + 0.12);
     const grabbed = b.grabTime > 0.22;
-    if (air > 0.28 && (flips > 0 || spins > 0 || grabbed || air > 0.55)) {
+    const whipped = b.whipTime > 0.16;
+    S.runStats.flips += flips;
+    S.runStats.spins += spins;
+    if (grabbed) S.runStats.grabs += 1;
+    if (air > 0.28 && (flips > 0 || spins > 0 || grabbed)) S.runStats.tricks += 1;
+    if (air > 0.28 && (flips > 0 || spins > 0 || grabbed || whipped || air > 0.55)) {
       const dir = b.flipRot >= 0 ? 'BACKFLIP' : 'FRONTFLIP';
       const flipPrefix = flips >= 4 ? 'QUAD ' : flips === 3 ? 'TRIPLE ' : flips === 2 ? 'DOUBLE ' : '';
       const grabPrefix = grabbed ? (flips >= 2 ? 'SUPERMAN ' : flips === 1 ? 'NO-HANDER ' : 'STYLE ') : '';
-      let name = flips > 0 ? `${grabPrefix}${flipPrefix}${dir}` : '';
+      const whipPrefix = whipped ? 'WHIP ' : '';
+      let name = flips > 0 ? `${whipPrefix}${grabPrefix}${flipPrefix}${dir}` : '';
       if (spins > 0) {
         name += `${name ? ' ' : ''}${spins * 360}`;
         if (!flips && !grabbed) name = `${spins * 360} SPIN`;
       }
-      if (!name && grabbed) name = 'STYLE GRAB';
-      if (!name) name = 'BIG AIR';
+      if (!name && grabbed) name = whipped ? 'WHIP GRAB' : 'STYLE GRAB';
+      if (!name) name = whipped ? 'WHIP' : 'BIG AIR';
 
-      const base = 80 + flips * 390 + spins * 190 + (grabbed ? 260 : 0) + Math.min(air, 2.4) * 170;
+      const base = 80 + flips * 390 + spins * 190 + (grabbed ? 260 : 0) + (whipped ? 180 : 0) + Math.min(air, 2.4) * 170;
       if (S.comboTimer > 0) S.chain += 1;
       else S.chain = 1;
       S.comboTimer = 5.2;
@@ -2182,6 +2573,8 @@
 
     b.flipRot = 0;
     b.spinRot = 0;
+    b.whipRot = 0;
+    b.whipTime = 0;
     b.airTime = 0;
     b.grabTime = 0;
     S.boosting = false;
@@ -2251,6 +2644,8 @@
     b.steer = 0;
     b.flipRot = 0;
     b.spinRot = 0;
+    b.whipRot = 0;
+    b.whipTime = 0;
     b.flipVel = 0;
     b.spinVel = 0;
     b.lean = 0;
@@ -2274,7 +2669,7 @@
     const yaw = Math.atan2(-dz, 1);
     const steerYaw = b.onGround ? -b.steer * 0.22 : 0;
     bikeRoot.position.set(b.x, b.y, b.z);
-    bikeRoot.rotation.y = yaw + steerYaw + b.spinRot;
+    bikeRoot.rotation.y = yaw + steerYaw + b.spinRot + b.whipRot;
 
     let pitch;
     if (b.onGround) pitch = Math.atan(slopeAt(b.x));
@@ -2362,7 +2757,7 @@
       camLook.z += (look.z - camLook.z) * (1 - Math.exp(-dt * 7));
     }
     S.shake = Math.max(0, S.shake - dt * 2.8);
-    const sh = S.shake;
+    const sh = gameSettings().shake === false ? 0 : S.shake;
     camera.position.set(
       camPos.x + (Math.random() * 2 - 1) * sh * 0.35,
       camPos.y + (Math.random() * 2 - 1) * sh * 0.25,
@@ -2420,6 +2815,18 @@
   function keydown(e) {
     if (!S.active) return;
     if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+    if (S.paused) {
+      if (S.photo && (e.code === 'Escape' || e.code === 'KeyP')) {
+        e.preventDefault();
+        exitPhotoMode();
+        return;
+      }
+      if (!S.photo && (e.code === 'Escape' || e.code === 'KeyP')) {
+        e.preventDefault();
+        resumeRide();
+      }
+      return;
+    }
     switch (e.code) {
       case 'ArrowLeft':
       case 'KeyA':
@@ -2453,9 +2860,10 @@
         e.preventDefault();
         break;
       case 'Escape':
+      case 'KeyP':
         e.preventDefault();
         if (S.mode === 'over') exitToMenu();
-        else exitToMenu();
+        else pauseRide();
         break;
       case 'KeyR':
         if (S.mode === 'over') again3d();
@@ -2549,7 +2957,60 @@
   dom.backBtn?.addEventListener('click', exitToMenu);
   dom.againBtn?.addEventListener('click', again3d);
   dom.menuBtn?.addEventListener('click', exitToMenu);
-  dom.exitBtn?.addEventListener('click', exitToMenu);
+  dom.exitBtn?.addEventListener('click', pauseRide);
+  dom.pauseResume?.addEventListener('click', resumeRide);
+  dom.pauseRestart?.addEventListener('click', restartRide);
+  dom.pauseGarage?.addEventListener('click', () => window.SENDIT_GARAGE && window.SENDIT_GARAGE.open('bikes'));
+  dom.pauseTrails?.addEventListener('click', () => window.SENDIT_GARAGE && window.SENDIT_GARAGE.open('trails'));
+  dom.pauseQuit?.addEventListener('click', () => {
+    dom.pause.classList.add('hidden');
+    S.paused = false;
+    exitToMenu();
+  });
+  dom.pauseQuality?.addEventListener('click', () => {
+    if (!window.SENDIT_GARAGE) return;
+    const q = (gameSettings().quality || 'high') === 'high' ? 'balanced' : 'high';
+    window.SENDIT_GARAGE.setSetting('quality', q);
+    applyQuality();
+    updatePauseLabels();
+  });
+  dom.pauseGhost?.addEventListener('click', () => {
+    if (!window.SENDIT_GARAGE) return;
+    window.SENDIT_GARAGE.setSetting('ghost', gameSettings().ghost === false);
+    if (!ghostData) ghostRoot && (ghostRoot.visible = false);
+    updatePauseLabels();
+  });
+  dom.pauseShake?.addEventListener('click', () => {
+    if (!window.SENDIT_GARAGE) return;
+    window.SENDIT_GARAGE.setSetting('shake', gameSettings().shake === false);
+    updatePauseLabels();
+  });
+  dom.pausePhoto?.addEventListener('click', enterPhotoMode);
+  dom.photoSave?.addEventListener('click', savePhoto);
+  dom.photoExit?.addEventListener('click', exitPhotoMode);
+
+  let photoDrag = null;
+  dom.canvas.addEventListener('pointerdown', (e) => {
+    if (!S.photo) return;
+    photoDrag = { x: e.clientX, y: e.clientY };
+    try { dom.canvas.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+  });
+  dom.canvas.addEventListener('pointermove', (e) => {
+    if (!S.photo || !photoDrag) return;
+    const dx = e.clientX - photoDrag.x;
+    const dy = e.clientY - photoDrag.y;
+    photoDrag = { x: e.clientX, y: e.clientY };
+    S.photoYaw += dx * 0.006;
+    S.photoPitch = Math.max(-0.1, Math.min(1.2, S.photoPitch + dy * 0.005));
+  });
+  const endPhotoDrag = () => { photoDrag = null; };
+  dom.canvas.addEventListener('pointerup', endPhotoDrag);
+  dom.canvas.addEventListener('pointercancel', endPhotoDrag);
+  dom.canvas.addEventListener('wheel', (e) => {
+    if (!S.photo) return;
+    e.preventDefault();
+    S.photoDist = Math.max(3, Math.min(18, S.photoDist + e.deltaY * 0.01));
+  }, { passive: false });
   window.addEventListener('keydown', keydown);
   window.addEventListener('keyup', keyup);
   window.addEventListener('blur', clearInput);
@@ -2611,6 +3072,8 @@
       if (renderer) renderer.render(scene, camera);
     },
     dustCount: () => dustParts.filter((p) => p.life > 0).length,
+    ghostVisible: () => !!(ghostRoot && ghostRoot.visible),
+    ghostInfo: () => ({ rec: ghostRec.length, best: ghostBest, key: ghostKey(), data: !!ghostData }),
     info: () => renderer ? { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles } : null
   };
 })();
