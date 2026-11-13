@@ -48,10 +48,11 @@ The **LEADERBOARDS** button shows the top 25 solo and 3D personal bests. Scores 
 
 ### Firebase setup
 
-1. Create a Firebase project and Web app, enable **Authentication → Email/Password**, and create a Cloud Firestore database.
-2. Copy the Web app's public SDK config into `cloud-config.js` as `window.SENDIT_FIREBASE_CONFIG = { ... }`.
-3. Deploy `firestore.rules` from this repository before enabling the app. The rules restrict private saves to their signed-in owner and permit public reading of opted-in scores.
-4. Add `daproatgames.github.io` to Firebase Authentication's authorized domains.
+This repository is configured for the Firebase project `send-it-da52d`. Its public Web app config is in `cloud-config.js`.
+
+1. Enable **Authentication → Email/Password** and create the Cloud Firestore database in the Firebase project.
+2. Deploy `firestore.rules` from this repository before enabling the app. The rules restrict private saves to their signed-in owner and permit public reading of opted-in scores.
+3. For future OAuth or email-link sign-in, add `daproatgames.github.io` to Firebase Authentication's authorized domains before enabling those methods.
 
 No service-account key or other server secret belongs in the website. Firebase charges may apply if usage exceeds the project's free limits. Leaderboard entries are intentionally labelled unverified because a static client cannot prove a score was earned in an honest run.
 
