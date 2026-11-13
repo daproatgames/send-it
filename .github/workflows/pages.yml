@@ -26,7 +26,7 @@ jobs:
       - name: Stage site
         run: |
           mkdir -p _site
-          cp -R index.html styles.css game.js online.js favicon.svg .nojekyll vendor README.md _site/
+          cp -R index.html styles.css game.js garage.js online.js ride3d.js cloud-config.js cloud.js favicon.svg .nojekyll vendor assets README.md _site/
 
       - uses: actions/configure-pages@v5
 
