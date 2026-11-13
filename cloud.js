@@ -5,6 +5,7 @@ const UI = {
   create: $('cloudCreate'), reset: $('cloudReset'), signedIn: $('cloudSignedIn'), account: $('cloudAccount'),
   nickname: $('cloudNickname'), shareScore: $('cloudShareScore'), saveProfile: $('cloudSaveProfile'),
   signOut: $('cloudSignOut'), status: $('cloudStatus'),
+  conflict: $('cloudConflict'), useOnline: $('cloudUseOnline'), useDevice: $('cloudUseDevice'),
   leaderboardBtn: $('leaderboardBtn'), leaderboardModal: $('leaderboardModal'),
   leaderboardClose: $('leaderboardClose'), leaderboard2d: $('leaderboard2d'),
   leaderboard3d: $('leaderboard3d'), leaderboardRows: $('leaderboardRows'),
@@ -29,6 +30,7 @@ let playerProfile = { nickname: 'RIDER', shareScore: false };
 let saveTimer = null;
 let saving = Promise.resolve();
 let selectedBoard = '2d';
+let pendingCloud = null;
 
 function status(message) { UI.status.textContent = message; }
 function boardStatus(message) { UI.leaderboardStatus.textContent = message; }
@@ -56,6 +58,14 @@ function localSnapshot() {
     shareScore: playerProfile.shareScore,
     updatedAt: firestore.serverTimestamp()
   };
+}
+function hasLocalProgress() {
+  const garage = readJSON(GARAGE_KEY, {});
+  return safeScore(localStorage.getItem(BEST_2D_KEY)) > 0
+    || safeScore(localStorage.getItem(BEST_3D_KEY)) > 0
+    || (Number(garage.runs) || 0) > 0
+    || (Array.isArray(garage.owned) && garage.owned.length > 2)
+    || (Number.isFinite(garage.balance) && garage.balance !== 500);
 }
 function restoreSnapshot(data) {
   if (data.garage && typeof data.garage === 'object') {
@@ -132,6 +142,8 @@ function saveNow() {
 async function loadAccount(account) {
   user = account;
   syncReady = false;
+  pendingCloud = null;
+  UI.conflict.classList.add('is-hidden');
   if (!user) { setAccountUI(); status('Sign in to save progress online.'); return; }
   status('Loading your cloud save…');
   try {
@@ -141,6 +153,12 @@ async function loadAccount(account) {
     if (!user || user.uid !== uid) return;
     if (result.exists()) {
       const data = result.data();
+      const priorOwner = localStorage.getItem(SAVE_KEY);
+      if (priorOwner && priorOwner !== uid && localStorage.getItem(DIRTY_KEY) === '1') {
+        setAccountUI();
+        status('Unsynced device progress belongs to another account. Sign back into that account first.');
+        return;
+      }
       playerProfile = {
         nickname: validNickname(data.nickname) ? data.nickname : 'RIDER',
         shareScore: data.shareScore === true
@@ -151,6 +169,12 @@ async function loadAccount(account) {
       } else if (localStorage.getItem(SAVE_KEY) === uid && localStorage.getItem(DIRTY_KEY) === '1') {
         syncReady = true;
         await saveNow();
+      } else if (!localStorage.getItem(SAVE_KEY) && hasLocalProgress()) {
+        pendingCloud = { uid, data, revision };
+        UI.conflict.classList.remove('is-hidden');
+        setAccountUI();
+        status('Choose which progress to keep before syncing.');
+        return;
       } else {
         restoreSnapshot(data);
         localStorage.setItem(SAVE_KEY, uid);
@@ -259,9 +283,25 @@ UI.reset.addEventListener('click', async () => {
   } catch (error) { status(friendlyError(error)); }
 });
 UI.saveProfile.addEventListener('click', async () => {
+  if (pendingCloud) { status('Choose which save to keep first.'); return; }
   const nickname = UI.nickname.value.trim();
   if (!validNickname(nickname)) { status('Rider name must be 2–14 letters, numbers, spaces, _ or -.'); return; }
   playerProfile = { nickname, shareScore: UI.shareScore.checked };
+  await saveNow();
+});
+UI.useOnline.addEventListener('click', () => {
+  if (!pendingCloud || user?.uid !== pendingCloud.uid) return;
+  restoreSnapshot(pendingCloud.data);
+  localStorage.setItem(SAVE_KEY, pendingCloud.uid);
+  localStorage.removeItem(DIRTY_KEY);
+  sessionStorage.setItem(RESTORED_KEY, pendingCloud.revision);
+  location.reload();
+});
+UI.useDevice.addEventListener('click', async () => {
+  if (!pendingCloud || user?.uid !== pendingCloud.uid) return;
+  pendingCloud = null;
+  UI.conflict.classList.add('is-hidden');
+  syncReady = true;
   await saveNow();
 });
 UI.signOut.addEventListener('click', async () => {
