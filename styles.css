@@ -998,6 +998,8 @@ kbd {
 .cloud-actions .btn { flex: 1; padding: 12px 14px; font-size: 13px; }
 .cloud-reset { display: block; margin: 10px auto 0; padding: 4px 8px; border: 0; background: none; color: var(--amber); cursor: pointer; font-size: 12px; }
 .cloud-signed-in > p { margin: 12px 0; text-align: center; color: var(--cream); overflow-wrap: anywhere; }
+.cloud-conflict { margin-top: 18px; padding: 12px; border: 1px solid rgba(255, 207, 107, 0.38); border-radius: 12px; }
+.cloud-conflict p { margin: 0; color: var(--cream); font-size: 13px; line-height: 1.45; }
 .cloud-check { display: flex; align-items: flex-start; gap: 9px; margin: 10px 0; font-size: 13px; color: var(--cream); line-height: 1.4; }
 .cloud-check input { width: 18px; height: 18px; accent-color: var(--orange); flex: 0 0 auto; }
 .cloud-card .modal-note { font-size: 11px; letter-spacing: 0.03em; line-height: 1.45; text-transform: none; }
