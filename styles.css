@@ -129,6 +129,7 @@ button:focus-visible, [tabindex]:focus-visible {
 
 .menu {
   align-items: center;
+  overflow-y: auto;
   padding: 5vh 6vw;
   background: linear-gradient(96deg, rgba(5, 12, 8, 0.84) 0%, rgba(5, 12, 8, 0.64) 27%, rgba(5, 12, 8, 0.24) 56%, rgba(5, 12, 8, 0.03) 78%, rgba(5, 12, 8, 0) 100%);
 }
@@ -146,6 +147,7 @@ button:focus-visible, [tabindex]:focus-visible {
   position: relative;
   z-index: 2;
   max-width: 760px;
+  margin-block: auto;
   animation: rise-in 0.8s cubic-bezier(0.2, 0.9, 0.22, 1) both;
 }
 
@@ -971,6 +973,40 @@ kbd {
   transition: color 0.2s, background 0.2s;
 }
 .modal-close:hover { color: var(--cream); background: rgba(255, 255, 255, 0.1); }
+.cloud-overlay {
+  z-index: 45;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  overflow-y: auto;
+  background: rgba(5, 11, 7, 0.7);
+  backdrop-filter: blur(8px);
+}
+.cloud-card {
+  position: relative;
+  width: min(500px, 100%);
+  max-height: calc(100vh - 28px);
+  overflow-y: auto;
+  padding: 30px 24px 22px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 20px;
+  background: #101d15;
+  box-shadow: 0 30px 100px rgba(0, 0, 0, 0.65);
+}
+.cloud-card .field { text-align: left; }
+.cloud-actions { display: flex; gap: 9px; margin-top: 12px; }
+.cloud-actions .btn { flex: 1; padding: 12px 14px; font-size: 13px; }
+.cloud-reset { display: block; margin: 10px auto 0; padding: 4px 8px; border: 0; background: none; color: var(--amber); cursor: pointer; font-size: 12px; }
+.cloud-signed-in > p { margin: 12px 0; text-align: center; color: var(--cream); overflow-wrap: anywhere; }
+.cloud-check { display: flex; align-items: flex-start; gap: 9px; margin: 10px 0; font-size: 13px; color: var(--cream); line-height: 1.4; }
+.cloud-check input { width: 18px; height: 18px; accent-color: var(--orange); flex: 0 0 auto; }
+.cloud-card .modal-note { font-size: 11px; letter-spacing: 0.03em; line-height: 1.45; text-transform: none; }
+.leaderboard-rows { list-style: none; min-height: 120px; max-height: 48vh; overflow-y: auto; padding: 0; margin: 18px 0 0; }
+.leaderboard-rows li { display: grid; grid-template-columns: 35px 1fr auto; gap: 9px; align-items: center; padding: 11px 9px; border-bottom: 1px solid rgba(255,255,255,0.1); font-family: var(--display); }
+.leaderboard-rows li span:first-child { color: var(--amber); }
+.leaderboard-rows li b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.leaderboard-rows li strong { font-variant-numeric: tabular-nums; }
+.leaderboard-rows li.mine { background: rgba(255, 184, 79, 0.1); }
 .online-gate { padding: 6px 0 4px; text-align: center; }
 .online-gate p { margin-bottom: 14px; font-size: 13px; color: var(--muted); line-height: 1.5; }
 .online-buttons { display: flex; flex-direction: column; gap: 10px; }
@@ -1901,6 +1937,7 @@ body.photo-mode .sound { display: none !important; }
   .menu-actions .btn { flex: 1 1 100%; }
   #startBtn, #garageBtn { flex: 1 1 calc(50% - 5px); }
   .menu-actions .best { order: 6; flex: 1 1 100%; }
+  #cloudBtn, #leaderboardBtn { flex: 1 1 calc(50% - 5px); padding: 12px 8px; font-size: 11px; }
   .garage-tabs { flex-wrap: wrap; overflow: visible; }
   .garage-tab { padding: 7px 10px; font-size: 10px; }
 }
