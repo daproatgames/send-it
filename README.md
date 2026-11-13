@@ -38,7 +38,22 @@ Open **GARAGE** from the main menu or the 3D start card. Coins and XP are earned
 
 Click the **SIGN IN** chip on the menu to create a local rider profile (name, PIN, bike color). Profiles are stored on the device; PINs are stored as a hash. A profile is required for online play and your rider tag is visible to other players in the room.
 
-Online rooms use a public MQTT relay. Use a nickname, not personal information. A dedicated backend would be needed for cross-device accounts and ranked leaderboards.
+Online rooms use a public MQTT relay. Use a nickname, not personal information. Cloud saves use Firebase separately; verified ranked competition would need server-side run validation.
+
+## Cloud saves and community leaderboards
+
+The **CLOUD SAVE** button signs into a separate email/password cloud account. On a new account, the current device's garage, best scores, and 3D PB ghosts are uploaded. On an existing account, its cloud save loads onto the device. Local play still works when the cloud service is unavailable; changes made after signing in sync when connectivity returns.
+
+The **LEADERBOARDS** button shows the top 25 solo and 3D personal bests. Scores are shared only after the player enables the opt-in checkbox and chooses a public rider nickname. These are community scores submitted by game clients, not verified competitive rankings. The local PIN profile remains for the existing multiplayer rooms and is not a cloud credential.
+
+### Firebase setup
+
+1. Create a Firebase project and Web app, enable **Authentication → Email/Password**, and create a Cloud Firestore database.
+2. Copy the Web app's public SDK config into `cloud-config.js` as `window.SENDIT_FIREBASE_CONFIG = { ... }`.
+3. Deploy `firestore.rules` from this repository before enabling the app. The rules restrict private saves to their signed-in owner and permit public reading of opted-in scores.
+4. Add `daproatgames.github.io` to Firebase Authentication's authorized domains.
+
+No service-account key or other server secret belongs in the website. Firebase charges may apply if usage exceeds the project's free limits. Leaderboard entries are intentionally labelled unverified because a static client cannot prove a score was earned in an honest run.
 
 ## Controls
 
