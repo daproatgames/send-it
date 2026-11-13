@@ -42,7 +42,7 @@ Online rooms use a public MQTT relay. Use a nickname, not personal information. 
 
 ## Cloud saves and community leaderboards
 
-The **CLOUD SAVE** button signs into a separate email/password cloud account. On a new account, the current device's garage, best scores, and 3D PB ghosts are uploaded. On an existing account, its cloud save loads onto the device. Local play still works when the cloud service is unavailable; changes made after signing in sync when connectivity returns.
+The **CLOUD SAVE** button signs into a separate email/password cloud account. On a new account, the current device's garage, best scores, and 3D PB ghosts are uploaded. On an existing account, its cloud save loads onto the device. If both the device and cloud have progress, the player chooses which save to keep. Local play still works when the cloud service is unavailable; changes made after signing in sync when connectivity returns.
 
 The **LEADERBOARDS** button shows the top 25 solo and 3D personal bests. Scores are shared only after the player enables the opt-in checkbox and chooses a public rider nickname. These are community scores submitted by game clients, not verified competitive rankings. The local PIN profile remains for the existing multiplayer rooms and is not a cloud credential.
 
