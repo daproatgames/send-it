@@ -2198,6 +2198,7 @@
       S.best3d = total;
       saveBest3d(total);
     }
+    window.dispatchEvent(new Event('sendit:save'));
     dom.finalScore.textContent = fmt(total);
     if (dom.coins) dom.coins.textContent = `+${fmt(S.coinsEarned)} COINS`;
     if (dom.runMeta) {

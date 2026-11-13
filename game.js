@@ -1432,6 +1432,7 @@
           this.runMeta += `${this.runMeta ? ' · ' : ''}BADGE: ${names}`;
         }
       }
+      window.dispatchEvent(new Event('sendit:save'));
       if (this.onGameOver) this.onGameOver(this, this.newBest);
     }
 

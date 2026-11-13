@@ -1,0 +1,46 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function owns(uid) { return request.auth != null && request.auth.uid == uid; }
+    function validName(name) {
+      return name is string && name.matches('^[A-Za-z0-9 _-]{2,14}$');
+    }
+    function validSave() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['garage', 'best2d', 'best3d', 'ghosts', 'nickname', 'shareScore', 'updatedAt'])
+        && d.keys().hasAll(['garage', 'best2d', 'best3d', 'ghosts', 'nickname', 'shareScore', 'updatedAt'])
+        && (d.garage == null || d.garage is map)
+        && d.ghosts is map && d.ghosts.size() <= 6
+        && d.best2d is int && d.best2d >= 0 && d.best2d <= 99999999
+        && d.best3d is int && d.best3d >= 0 && d.best3d <= 99999999
+        && validName(d.nickname) && d.shareScore is bool
+        && d.updatedAt == request.time;
+    }
+    function validScore() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['nickname', 'score', 'updatedAt'])
+        && d.keys().hasAll(['nickname', 'score', 'updatedAt'])
+        && validName(d.nickname)
+        && d.score is int && d.score > 0 && d.score <= 99999999
+        && d.updatedAt == request.time;
+    }
+    match /players/{uid} {
+      allow get: if owns(uid);
+      allow list: if false;
+      allow create, update: if owns(uid) && validSave();
+      allow delete: if owns(uid);
+    }
+    match /scores2d/{uid} {
+      allow read: if true;
+      allow create: if owns(uid) && validScore();
+      allow update: if owns(uid) && validScore() && request.resource.data.score >= resource.data.score;
+      allow delete: if owns(uid);
+    }
+    match /scores3d/{uid} {
+      allow read: if true;
+      allow create: if owns(uid) && validScore();
+      allow update: if owns(uid) && validScore() && request.resource.data.score >= resource.data.score;
+      allow delete: if owns(uid);
+    }
+  }
+}
