@@ -34,6 +34,17 @@ Open **GARAGE** from the main menu or the 3D start card. Coins and XP are earned
 - **Photo mode** freezes the run and lets you orbit the bike with drag, zoom with the wheel, and save a PNG.
 - Gamepad support in 3D: left stick carves/spins, A jumps/flips, B frontflips, X grabs, RT boosts.
 
+## Realism & signature moments
+
+- **Animated rider** — the rider actually pedals: cranks turn and the legs bend with two-bone IK to follow the pedals. Brake discs glow when you brake, and the scarf flutters with speed.
+- **Tire wear & skid marks** — twin tire lines run down the singletrack, and braking or hard carving lays fading skid marks.
+- **Wet Storm Pass** — the trail turns reflective and dark in the rain, with puddles that splash as you ride through them, plus rain and distant thunder audio.
+- **Trail signage** — a wooden trailhead sign names each trail, with distance boards every 250 m.
+- **Finish-line crowd** — spectators wave near the finish gate.
+- **Finish cinematic** — crossing the line triggers a slow orbit camera and a “FULL SEND” banner before the results card.
+- **Ghost beaten** — passing your personal-best ghost mid-run awards a bonus and a callout.
+- **Birds** drift across the sky on every trail.
+
 ## Rider profiles
 
 Click the **SIGN IN** chip on the menu to create a local rider profile (name, PIN, bike color). Profiles are stored on the device; PINs are stored as a hash. A profile is required for online play and your rider tag is visible to other players in the room.

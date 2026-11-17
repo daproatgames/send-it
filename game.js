@@ -192,6 +192,8 @@
       this.noiseBuf = null;
       this.wind = null;
       this.roll = null;
+      this.rain = null;
+      this.rainOn = false;
       this.windOn = false;
       this.muted = loadMuted();
     }
@@ -244,6 +246,38 @@
       rgain.connect(this.master);
       rsrc.start();
       this.roll = { src: rsrc, filt: rfilt, gain: rgain };
+
+      // rain layer
+      const asrc = this.ctx.createBufferSource();
+      asrc.buffer = buffer;
+      asrc.loop = true;
+      const afilt = this.ctx.createBiquadFilter();
+      afilt.type = 'bandpass';
+      afilt.frequency.value = 1900;
+      afilt.Q.value = 0.4;
+      const again = this.ctx.createGain();
+      again.gain.value = 0;
+      asrc.connect(afilt);
+      afilt.connect(again);
+      again.connect(this.master);
+      asrc.start();
+      this.rain = { src: asrc, filt: afilt, gain: again };
+    }
+
+    setRain(on) {
+      this.rainOn = !!on;
+      if (this.rain && this.ctx) {
+        this.rain.gain.gain.setTargetAtTime(on ? 0.05 : 0, this.ctx.currentTime, 0.4);
+      }
+    }
+
+    splash() {
+      this.noise(0.22, { freq: 1400, to: 500, gain: 0.07, q: 0.6 });
+    }
+
+    thunder() {
+      this.noise(1.2, { freq: 130, to: 40, gain: 0.12, filter: 'lowpass' });
+      this.tone(52, 1.0, { to: 30, type: 'sine', gain: 0.06 });
     }
 
     setMuted(m) {
