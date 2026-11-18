@@ -10,7 +10,7 @@
 <meta property="og:description" content="A fast, arcade downhill mountain biking trick game. Flip it. Whip it. Stomp it — solo or online with friends." />
 <meta property="og:type" content="website" />
 <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-<link rel="stylesheet" href="styles.css?v=19" />
+<link rel="stylesheet" href="styles.css?v=20" />
 </head>
 <body>
 <canvas id="game" aria-label="Downhill mountain biking game"></canvas>
@@ -76,6 +76,15 @@
   </div>
 </div>
 
+<div id="raceHud" class="race-hud hidden" aria-hidden="true">
+  <div class="race-hud-top">
+    <span id="raceLabel">RACE · 800M</span>
+    <b id="racePlace">1st</b>
+  </div>
+  <div class="race-track"><i id="raceBar"></i></div>
+  <div class="race-gap" id="raceGap">LEADING</div>
+</div>
+
 <div id="wipeout" class="wipeout" aria-hidden="true">WIPEOUT</div>
 <div id="toast" class="toast" aria-hidden="true"></div>
 
@@ -93,13 +102,33 @@
     <h1 class="logo">SEND&nbsp;<span class="logo-it">IT</span></h1>
     <p class="tagline">A full-send downhill run. <br />Flip it. Whip it. Stomp it.</p>
     <div class="menu-actions">
-      <button id="startBtn" class="btn primary">DROP IN <span class="arr">→</span></button>
-      <button id="onlineBtn" class="btn ghost ride-together" type="button"><span class="live-dot"></span>RIDE TOGETHER</button>
-      <button id="ride3dBtn" class="btn ghost mode3d-btn" type="button"><span class="badge3d">3D</span> FREERIDE</button>
-      <button id="garageBtn" class="btn ghost garage-btn" type="button"><span class="garage-ico">◆</span> GARAGE</button>
-      <button id="cloudBtn" class="btn ghost" type="button">☁ CLOUD SAVE</button>
-      <button id="leaderboardBtn" class="btn ghost" type="button">★ LEADERBOARDS</button>
+      <div class="menu-mode-grid">
+        <button id="startBtn" class="btn primary mode-card">
+          <span class="mode-kicker">SOLO</span>
+          <span class="mode-title">DROP IN <span class="arr">→</span></span>
+          <small>Endless downhill · tricks · 3 wipeouts</small>
+        </button>
+        <button id="onlineBtn" class="btn ghost mode-card ride-together" type="button">
+          <span class="mode-kicker"><span class="live-dot"></span> MULTIPLAYER</span>
+          <span class="mode-title">RACE TOGETHER</span>
+          <small>First to the finish wins · live ghosts</small>
+        </button>
+        <button id="ride3dBtn" class="btn ghost mode-card mode3d-btn" type="button">
+          <span class="mode-kicker"><span class="badge3d">3D</span> FREERIDE</span>
+          <span class="mode-title">ALPINE DESCENT</span>
+          <small>Six trails · photo mode · cinematic dusk</small>
+        </button>
+        <button id="garageBtn" class="btn ghost mode-card garage-btn" type="button">
+          <span class="mode-kicker"><span class="garage-ico">◆</span> GARAGE</span>
+          <span class="mode-title">BIKES &amp; GEAR</span>
+          <small>Brands, parts, kits, contracts, badges</small>
+        </button>
+      </div>
       <div class="best"><span class="label">PERSONAL BEST</span><b id="menuBest">0</b></div>
+      <div class="menu-links">
+        <button id="cloudBtn" class="link-btn" type="button">☁ CLOUD SAVE</button>
+        <button id="leaderboardBtn" class="link-btn" type="button">★ LEADERBOARDS</button>
+      </div>
     </div>
     <div class="controls">
       <div class="ctrl"><span><kbd>→</kbd><kbd>D</kbd></span><em>Sprint</em></div>
@@ -109,8 +138,7 @@
       <div class="ctrl"><span><kbd>SHIFT</kbd></span><em>Style grab</em></div>
       <div class="ctrl"><span><kbd>B</kbd></span><em>Boost</em></div>
     </div>
-    <p class="auto-line">Auto-pedal is on · hold <b>→</b> / <b>D</b> to sprint</p>
-    <p class="hint">Auto-pedal is always on — hold <kbd>→</kbd><kbd>D</kbd> to sprint. Land with your wheels lined up and stack it three times and the run's over.</p>
+    <p class="auto-line">Auto-pedal on · 3 wipeouts ends the run · hold <b>→</b> / <b>D</b> to sprint</p>
   </div>
   <div class="menu-foot"><span>ARROWS / WASD</span><span class="dot">•</span><span>M TO MUTE</span><span class="dot">•</span><span>3 WIPEOUTS</span></div>
 </div>
@@ -224,6 +252,20 @@
   </div>
 </div>
 
+<div id="onlineResult" class="overlay over online-result hidden">
+  <div class="over-card">
+    <div class="eyebrow eyebrow-center" id="resultEyebrow">RACE COMPLETE</div>
+    <h2 class="over-title" id="resultTitle">YOU WIN</h2>
+    <p class="modal-sub" id="resultSub">First to 800 m</p>
+    <ol id="resultRows" class="result-rows"></ol>
+    <div class="over-actions">
+      <button id="rematchBtn" class="btn primary" type="button">REMATCH <span class="arr">→</span></button>
+      <button id="resultLeaveBtn" class="btn ghost" type="button">LEAVE</button>
+    </div>
+    <p class="hint" id="resultHint">Waiting for host…</p>
+  </div>
+</div>
+
 <div id="garage" class="overlay garage hidden">
   <div class="garage-card">
     <div class="garage-head">
@@ -299,9 +341,9 @@
 
 <div id="online" class="overlay online-overlay hidden">
   <div class="online-card">
-    <div class="eyebrow eyebrow-center">LIVE GHOST RIDE</div>
-    <h2 class="modal-title">RIDE TOGETHER</h2>
-    <p class="modal-sub">The same trail, real riders. Host a room and share the code, or join a friend.</p>
+    <div class="eyebrow eyebrow-center">LIVE MULTIPLAYER</div>
+    <h2 class="modal-title">RACE TOGETHER</h2>
+    <p class="modal-sub">Race head-to-head to the finish line, or switch to ghost mode. Host a room and share the code, or join a friend.</p>
     <div id="onlineGate" class="online-gate is-hidden">
       <p>You need a rider profile to ride online.</p>
       <button id="onlineSignIn" class="btn primary" type="button">RIDER SIGN IN</button>
@@ -323,9 +365,24 @@
         <b id="roomCode">—</b>
         <button id="copyCode" class="copy-btn" type="button">COPY</button>
       </div>
+      <div class="race-setup" id="raceSetup">
+        <div class="race-setup-top">
+          <span class="label">RACE SETUP</span>
+          <span class="race-rule" id="raceRule">First to 800 m wins</span>
+        </div>
+        <div class="race-mode-row">
+          <button class="race-chip active" data-race-mode="race" type="button">RACE TO FINISH</button>
+          <button class="race-chip" data-race-mode="ghost" type="button">GHOST RIDE</button>
+        </div>
+        <div class="race-dist-row">
+          <button class="race-chip" data-race-dist="500" type="button">500m</button>
+          <button class="race-chip active" data-race-dist="800" type="button">800m</button>
+          <button class="race-chip" data-race-dist="1200" type="button">1200m</button>
+        </div>
+      </div>
       <div class="lobby-players" id="lobbyPlayers"></div>
       <div class="online-buttons">
-        <button id="startOnlineBtn" class="btn primary" type="button">START RIDE</button>
+        <button id="startOnlineBtn" class="btn primary" type="button">START RACE</button>
         <button id="leaveLobbyBtn" class="btn ghost" type="button">LEAVE</button>
       </div>
       <p class="lobby-hint" id="lobbyHint">Waiting for the host to start…</p>
@@ -368,6 +425,7 @@
       </div>
     </div>
     <p id="cloudStatus" class="modal-note" role="status" aria-live="polite">Cloud saves are loading…</p>
+    <button id="cloudRetry" class="btn ghost cloud-retry" type="button">RETRY SYNC</button>
   </div>
 </div>
 
@@ -382,6 +440,7 @@
     </div>
     <ol id="leaderboardRows" class="leaderboard-rows"></ol>
     <p id="leaderboardStatus" class="modal-note" role="status" aria-live="polite"></p>
+    <button id="leaderboardRetry" class="btn ghost cloud-retry" type="button">RETRY</button>
     <p class="modal-note">Community scores are submitted by players and are not verified competition results.</p>
   </div>
 </div>
@@ -402,11 +461,11 @@
 
 <script src="vendor/mqtt.min.js"></script>
 <script src="garage.js?v=4"></script>
-<script src="game.js?v=17"></script>
-<script src="online.js?v=5"></script>
+<script src="game.js?v=18"></script>
+<script src="online.js?v=6"></script>
 <script src="vendor/three.min.js"></script>
 <script src="ride3d.js?v=18"></script>
 <script src="cloud-config.js"></script>
-<script type="module" src="cloud.js"></script>
+<script type="module" src="cloud.js?v=2"></script>
 </body>
 </html>

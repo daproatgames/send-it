@@ -9,7 +9,7 @@ Ride a procedurally generated trail, hit kickers, backflip and frontflip, throw 
 ## Modes
 
 - **Solo** — endless downhill run with tricks, combos, boosts, and wipeouts.
-- **Ride Together** — online ghost ride with real riders. Host a room, share the 5-character code, and ride the same seeded trail in real time.
+- **Ride Together** — live multiplayer. Host a room, share the 5-character code, and either race to a finish line or ride as ghosts. Race distance is set by the host (500 m, 800 m, or 1200 m); the first rider to the finish wins, with live positions, standings, and host rematches.
 - **Freeride 3D** — a chase-cam, PBR alpine descent with carve steering, jumps, flips, spins, gate boosts, and a separate 3D best score. The trail ends at a finish gate; a landing gauge shows your flip angle before touchdown.
 - **Garage** — earn coins and XP from runs, buy fictional bike brands and rider kits, upgrade parts, complete daily contracts, unlock badges, and pick from six 3D trails.
 
@@ -26,6 +26,13 @@ Open **GARAGE** from the main menu or the 3D start card. Coins and XP are earned
 - **Levels** — rider XP with level-up coin bonuses.
 - **PB ghost** — your best run on each trail is saved and raced as a translucent ghost next time.
 - Bike brands are invented for this game; no real-world trademarks are used.
+
+## Cloud saves & leaderboards
+
+- Optional email cloud save syncs garage progress, coins, records, and best scores across devices.
+- PB ghosts stay local (keeps cloud documents small and reliable).
+- Failed syncs keep the device save and retry automatically; the cloud panel has a **Retry Sync** button and clearer error messages.
+- Community best-score leaderboards show the top 25 for solo and 3D freeride.
 
 ## Pause, settings & photo mode
 

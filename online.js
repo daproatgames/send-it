@@ -59,6 +59,21 @@
     startOnlineBtn: $('startOnlineBtn'),
     leaveLobbyBtn: $('leaveLobbyBtn'),
     lobbyHint: $('lobbyHint'),
+    raceSetup: $('raceSetup'),
+    raceRule: $('raceRule'),
+    raceHud: $('raceHud'),
+    raceLabel: $('raceLabel'),
+    racePlace: $('racePlace'),
+    raceBar: $('raceBar'),
+    raceGap: $('raceGap'),
+    result: $('onlineResult'),
+    resultEyebrow: $('resultEyebrow'),
+    resultTitle: $('resultTitle'),
+    resultSub: $('resultSub'),
+    resultRows: $('resultRows'),
+    rematchBtn: $('rematchBtn'),
+    resultLeaveBtn: $('resultLeaveBtn'),
+    resultHint: $('resultHint'),
     onlineClose: $('onlineClose'),
     ridersPanel: $('ridersPanel'),
     ridersList: $('ridersList'),
@@ -306,6 +321,12 @@
     hostId: '',
     isHost: false,
     started: false,
+    finished: false,
+    winnerId: '',
+    winnerName: '',
+    mode: 'race',
+    raceDistance: 800,
+    raceStart: 0,
     players: new Map(),
     closing: false,
     joinTimer: null,
@@ -328,6 +349,138 @@
 
   function setStatus(msg) {
     dom.onlineStatus.textContent = msg || '';
+  }
+
+  function updateRaceSetupUI() {
+    if (!dom.raceSetup) return;
+    dom.raceSetup.classList.toggle('host', net.isHost);
+    document.querySelectorAll('[data-race-mode]').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.raceMode === net.mode);
+      btn.disabled = !net.isHost;
+    });
+    document.querySelectorAll('[data-race-dist]').forEach((btn) => {
+      btn.classList.toggle('active', Number(btn.dataset.raceDist) === net.raceDistance);
+      btn.disabled = !net.isHost || net.mode === 'ghost';
+    });
+    if (dom.raceRule) {
+      dom.raceRule.textContent = net.mode === 'race'
+        ? `First to ${net.raceDistance} m wins`
+        : 'Shared ghost ride · no finish';
+    }
+    if (dom.startOnlineBtn) dom.startOnlineBtn.textContent = net.mode === 'race' ? 'START RACE' : 'START RIDE';
+  }
+
+  function ordinal(n) {
+    const s = ['th', 'st', 'nd', 'rd'];
+    const v = n % 100;
+    return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`;
+  }
+
+  function standings() {
+    const rows = [{ id: net.selfId, name: game.playerName, dist: game.distance, me: true }];
+    for (const [id, r] of game.remotes) {
+      const d = (r.target ? r.target.x : r.render.x) / 40;
+      rows.push({ id, name: r.name, dist: Math.max(0, d), me: false });
+    }
+    rows.sort((a, b) => b.dist - a.dist);
+    return rows;
+  }
+
+  function updateRaceHud() {
+    if (!dom.raceHud) return;
+    const on = net.started && net.mode === 'race' && !net.finished;
+    dom.raceHud.classList.toggle('hidden', !on);
+    if (!on) return;
+    const rows = standings();
+    const place = Math.max(1, rows.findIndex((r) => r.me) + 1);
+    const leader = rows[0];
+    const self = rows.find((r) => r.me) || rows[0];
+    const pct = Math.min(100, (self.dist / net.raceDistance) * 100);
+    dom.raceLabel.textContent = `RACE · ${net.raceDistance}M`;
+    dom.racePlace.textContent = `${ordinal(place)} / ${rows.length}`;
+    dom.raceBar.style.width = `${pct}%`;
+    const gap = Math.max(0, leader.dist - self.dist);
+    dom.raceGap.textContent = gap < 1 ? 'LEADING' : `${Math.round(gap)}m BACK`;
+  }
+
+  function showRaceResult() {
+    const rows = standings();
+    const winner = rows.find((r) => r.id === net.winnerId) || rows[0];
+    game.state = 'raceover';
+    game.sfx.stopWind();
+    if (dom.raceHud) dom.raceHud.classList.add('hidden');
+    dom.resultEyebrow.textContent = net.mode === 'ghost' ? 'RIDE COMPLETE' : 'RACE COMPLETE';
+    dom.resultTitle.textContent = winner.id === net.selfId ? 'YOU WIN' : `${winner.name} WINS`;
+    dom.resultSub.textContent = net.mode === 'race'
+      ? `First to ${net.raceDistance} m · ${rows.length} riders`
+      : 'Shared ghost ride complete';
+    dom.resultRows.textContent = '';
+    rows.slice(0, 8).forEach((row, i) => {
+      const li = document.createElement('li');
+      if (row.me) li.classList.add('me');
+      if (row.id === net.winnerId) li.classList.add('winner');
+      const pos = document.createElement('span');
+      pos.className = 'pos';
+      pos.textContent = `#${i + 1}`;
+      const name = document.createElement('span');
+      name.className = 'nm';
+      name.textContent = row.name;
+      const dist = document.createElement('span');
+      dist.className = 'dst';
+      dist.textContent = `${Math.round(Math.min(row.dist, net.raceDistance))}m`;
+      li.append(pos, name, dist);
+      dom.resultRows.appendChild(li);
+    });
+    dom.rematchBtn.classList.toggle('hidden', !net.isHost);
+    dom.resultHint.textContent = net.isHost ? 'Start a rematch or leave the room.' : 'Waiting for the host to start a rematch…';
+    dom.result.classList.remove('hidden');
+    dom.exitBtn?.classList.add('hidden');
+  }
+
+  function hideRaceResult() {
+    if (dom.result) dom.result.classList.add('hidden');
+    if (dom.raceHud) dom.raceHud.classList.add('hidden');
+  }
+
+  function clearRaceUI() {
+    net.finished = false;
+    net.winnerId = '';
+    net.winnerName = '';
+    hideRaceResult();
+    game.raceMode = false;
+    game.raceTargetX = Infinity;
+  }
+
+  function declareWinner(winner) {
+    if (!net.isHost || net.finished) return;
+    net.finished = true;
+    net.winnerId = winner.id;
+    net.winnerName = winner.name;
+    publish({ type: 'winner', winnerId: winner.id, name: winner.name, hostId: net.selfId }, 1);
+    showRaceResult();
+  }
+
+  function hostRematch() {
+    if (!net.isHost || !net.started) return;
+    const seed = ((window.crypto && crypto.getRandomValues ? crypto.getRandomValues(new Uint32Array(1))[0] : Math.random() * 0xffffffff) >>> 0);
+    net.finished = false;
+    net.winnerId = '';
+    net.winnerName = '';
+    net.startedAt = 0;
+    hideRaceResult();
+    publish({
+      type: 'start',
+      seed,
+      hostId: net.selfId,
+      mode: net.mode,
+      distance: net.raceDistance
+    }, 1);
+    setTimeout(() => {
+      if (net.started && net.roomCode) {
+        publish({ type: 'start', seed, hostId: net.selfId, mode: net.mode, distance: net.raceDistance }, 1);
+      }
+    }, 700);
+    startRide(seed, true);
   }
 
   function publish(payload, qos = 1) {
@@ -415,6 +568,7 @@
     net.closing = false;
     game.onTick = null;
     game.remotes.clear();
+    clearRaceUI();
     setStatus('');
     updateOnlineUI();
   }
@@ -446,6 +600,7 @@
     net.closing = false;
     game.onTick = null;
     game.remotes.clear();
+    clearRaceUI();
     setStatus('');
   }
 
@@ -466,6 +621,7 @@
     net.hostId = net.selfId;
     net.players.set(net.selfId, { id: net.selfId, name: p.name, color: p.color, lastSeen: Date.now(), host: true });
     net.lastHostSeen = Date.now();
+    updateRaceSetupUI();
     if (typeof net.client.publish !== 'function') return;
     broadcastLobby();
     net.lobbyTimer = setInterval(() => {
@@ -492,6 +648,7 @@
     const p = profile();
     net.players.set(net.selfId, { id: net.selfId, name: p.name, color: p.color, lastSeen: Date.now(), host: false });
     net.lastHostSeen = Date.now();
+    updateRaceSetupUI();
     publish({ type: 'join', id: net.selfId, name: p.name, color: p.color }, 1);
     updateOnlineUI();
     clearTimeout(net.joinTimer);
@@ -521,7 +678,7 @@
       if (id === net.selfId) continue;
       players.push({ id, name: p.name, color: p.color });
     }
-    publish({ type: 'lobby', hostId: net.selfId, players }, 0);
+    publish({ type: 'lobby', hostId: net.selfId, players, mode: net.mode, distance: net.raceDistance }, 0);
     renderLobbyPlayers(players);
   }
 
@@ -582,6 +739,9 @@
       if (net.hostId && msg.hostId !== net.hostId) return;
       net.hostId = msg.hostId;
       net.lastHostSeen = Date.now();
+      net.mode = msg.mode === 'ghost' ? 'ghost' : 'race';
+      net.raceDistance = [500, 800, 1200].includes(Number(msg.distance)) ? Number(msg.distance) : 800;
+      updateRaceSetupUI();
       net.players.clear();
       net.players.set(net.selfId, { id: net.selfId, name: profile().name, color: profile().color, host: false, lastSeen: Date.now() });
       for (const p of msg.players || []) {
@@ -600,12 +760,21 @@
       setOnlineError('');
       updateOnlineUI();
     } else if (msg.type === 'start') {
-      if (net.started) return;
+      if (net.started && !net.finished) return;
       if (net.hostId && msg.hostId && msg.hostId !== net.hostId) return;
       const seed = Number(msg.seed);
       if (!Number.isFinite(seed)) return;
       if (!net.hostId) net.hostId = msg.hostId || '';
-      startRide(seed >>> 0);
+      net.mode = msg.mode === 'ghost' ? 'ghost' : 'race';
+      net.raceDistance = [500, 800, 1200].includes(Number(msg.distance)) ? Number(msg.distance) : 800;
+      startRide(seed >>> 0, true);
+    } else if (msg.type === 'winner') {
+      if (net.hostId && msg.hostId && msg.hostId !== net.hostId) return;
+      if (net.finished) return;
+      net.finished = true;
+      net.winnerId = msg.winnerId || '';
+      net.winnerName = sanitizeName(msg.name) || 'RIDER';
+      showRaceResult();
     } else if (msg.type === 'in-progress') {
       if (msg.for !== net.selfId) return;
       setOnlineError('That ride is already in progress. Ask the host for a new room.');
@@ -679,6 +848,25 @@
 
   function onlineTick(dt) {
     if (!net.started) return;
+    if (net.mode === 'race' && !net.finished) {
+      updateRaceHud();
+      if (net.isHost) {
+        const target = net.raceDistance;
+        let winner = null;
+        if (game.distance >= target) {
+          winner = { id: net.selfId, name: game.playerName };
+        } else {
+          for (const [id, r] of game.remotes) {
+            const d = (r.target ? r.target.x : r.render.x) / 40;
+            if (d >= target) {
+              winner = { id, name: r.name };
+              break;
+            }
+          }
+        }
+        if (winner) declareWinner(winner);
+      }
+    }
     net.sendAcc += dt;
     if (net.sendAcc >= 0.12) {
       net.sendAcc = 0;
@@ -731,6 +919,9 @@
     for (let i = 0; i < limit; i++) {
       const row = document.createElement('div');
       row.className = 'rider-row' + (rows[i].me ? ' me' : '');
+      const rank = document.createElement('span');
+      rank.className = 'rank';
+      rank.textContent = String(i + 1);
       const dot = document.createElement('i');
       dot.style.background = rows[i].color;
       const name = document.createElement('span');
@@ -739,7 +930,7 @@
       const dist = document.createElement('span');
       dist.className = 'dst';
       dist.textContent = `${fmt(rows[i].dist)}m`;
-      row.append(dot, name, dist);
+      row.append(rank, dot, name, dist);
       dom.ridersList.appendChild(row);
     }
     if (rows.length > limit) {
@@ -812,6 +1003,7 @@
   function openOnline() {
     setOnlineError('');
     setStatus('');
+    updateRaceSetupUI();
     dom.online.classList.remove('hidden');
     if (net.roomCode) {
       updateOnlineUI();
@@ -906,26 +1098,34 @@
     const seed = ((window.crypto && crypto.getRandomValues ? crypto.getRandomValues(new Uint32Array(1))[0] : Math.random() * 0xffffffff) >>> 0);
     net.started = true;
     net.startedAt = 0;
-    publish({ type: 'start', seed, hostId: net.selfId }, 1);
+    net.finished = false;
+    net.winnerId = '';
+    net.winnerName = '';
+    const startMsg = { type: 'start', seed, hostId: net.selfId, mode: net.mode, distance: net.raceDistance };
+    publish(startMsg, 1);
     setTimeout(() => {
-      if (net.started && net.roomCode) publish({ type: 'start', seed, hostId: net.selfId }, 1);
+      if (net.started && net.roomCode) publish(startMsg, 1);
     }, 700);
     setTimeout(() => {
-      if (net.started && net.roomCode) publish({ type: 'start', seed, hostId: net.selfId }, 1);
+      if (net.started && net.roomCode) publish(startMsg, 1);
     }, 1500);
     startRide(seed);
   }
 
-  function startRide(seed) {
-    if (net.started && net.startedAt) return;
+  function startRide(seed, force = false) {
+    if (net.started && net.startedAt && !force) return;
     net.started = true;
     net.startedAt = Date.now();
+    net.finished = false;
+    net.winnerId = '';
+    net.winnerName = '';
     clearTimeout(net.joinTimer);
     clearInterval(net.lobbyTimer);
     clearInterval(net.pingTimer);
     net.joinTimer = null;
     net.lobbyTimer = null;
     net.pingTimer = null;
+    hideRaceResult();
     dom.online.classList.add('hidden');
     dom.auth.classList.add('hidden');
     dom.menu.classList.add('hidden');
@@ -936,10 +1136,17 @@
     dom.ridersPanel.classList.remove('is-hidden');
     dom.ridersList.textContent = '';
     game.startOnline(seed >>> 0);
+    game.raceMode = net.mode === 'race';
+    game.raceDistance = net.raceDistance;
+    game.raceTargetX = game.raceMode ? net.raceDistance * 40 : Infinity;
     game.onTick = onlineTick;
     net.sendAcc = 0;
     net.boardAcc = 0;
-    game.onToast?.('RIDE TOGETHER');
+    if (net.mode === 'race' && dom.raceHud) {
+      dom.raceHud.classList.remove('hidden');
+      updateRaceHud();
+    }
+    game.onToast?.(net.mode === 'race' ? `RACE TO ${net.raceDistance} M` : 'RIDE TOGETHER');
   }
 
   function leaveRoom(announce = true) {
@@ -968,6 +1175,7 @@
     net.players.clear();
     game.remotes.clear();
     game.onTick = null;
+    clearRaceUI();
     dom.online.classList.add('hidden');
     dom.auth.classList.add('hidden');
     dom.lobby.classList.add('is-hidden');
@@ -1011,6 +1219,7 @@
     net.startedAt = 0;
     game.remotes.clear();
     game.onTick = null;
+    clearRaceUI();
     if (client) {
       try {
         client.end(true);
@@ -1034,6 +1243,7 @@
   buildSwatches();
   applyProfile();
   updateSwatches();
+  updateRaceSetupUI();
 
   const previousGameOver = game.onGameOver;
   game.onGameOver = (g, isBest) => {
@@ -1064,6 +1274,29 @@
   });
   dom.onlineClose.addEventListener('click', closeOnline);
   dom.hostBtn.addEventListener('click', startHosting);
+  document.querySelectorAll('[data-race-mode]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (!net.isHost) return;
+      net.mode = btn.dataset.raceMode === 'ghost' ? 'ghost' : 'race';
+      updateRaceSetupUI();
+      broadcastLobby();
+    });
+  });
+  document.querySelectorAll('[data-race-dist]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (!net.isHost) return;
+      const d = Number(btn.dataset.raceDist);
+      if (![500, 800, 1200].includes(d)) return;
+      net.raceDistance = d;
+      updateRaceSetupUI();
+      broadcastLobby();
+    });
+  });
+  dom.rematchBtn.addEventListener('click', hostRematch);
+  dom.resultLeaveBtn.addEventListener('click', () => {
+    dom.result.classList.add('hidden');
+    leaveRoom();
+  });
   dom.joinBtn.addEventListener('click', joinRide);
   dom.joinCode.addEventListener('input', () => {
     const clean = dom.joinCode.value.toUpperCase().replace(/[^A-Z2-9]/g, '').slice(0, 5);

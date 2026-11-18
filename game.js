@@ -762,6 +762,9 @@
       this.streakAlpha = 0;
       this.cloudSprite = makeCloudSprite();
       this.online = false;
+      this.raceMode = false;
+      this.raceDistance = 0;
+      this.raceTargetX = Infinity;
       this.remotes = new Map();
       this.playerName = 'RIDER';
       this.playerColor = '#ff8a2a';
@@ -900,6 +903,9 @@
       this.newBest = false;
       this.runStats = { flips: 0, grabs: 0, tricks: 0 };
       this.runMeta = '';
+      this.raceMode = false;
+      this.raceDistance = 0;
+      this.raceTargetX = Infinity;
       this.zone = 0;
       this.palette = getPalette(0);
       this.clearInput();
@@ -931,6 +937,9 @@
       this.newBest = false;
       this.runStats = { flips: 0, grabs: 0, tricks: 0 };
       this.runMeta = '';
+      this.raceMode = false;
+      this.raceDistance = 0;
+      this.raceTargetX = Infinity;
       this.zone = 0;
       this.palette = getPalette(0);
       this.remotes.clear();
@@ -1595,6 +1604,7 @@
       this.drawNearForest(ctx, pal);
       this.drawGround(ctx, pal);
       this.drawTrailDetails(ctx, pal);
+      this.drawRaceFinish(ctx, pal);
       this.drawParticles(ctx, false);
       this.drawRemoteRiders(ctx, pal);
       this.drawBike(ctx, pal);
@@ -1605,6 +1615,35 @@
 
       this.drawSpeedLines(ctx, W, H);
       this.drawCountdown(ctx, W, H);
+    }
+
+    drawRaceFinish(ctx, pal) {
+      if (!this.raceMode || !Number.isFinite(this.raceTargetX)) return;
+      const x = this.raceTargetX;
+      if (Math.abs(x - this.bike.x) > this.viewW * 1.35) return;
+      const gy = this.terrain.groundY(x);
+      ctx.save();
+      // checkered line
+      for (let i = 0; i < 14; i++) {
+        ctx.fillStyle = i % 2 ? '#f7f1e1' : '#17130e';
+        ctx.fillRect(x - 35 + i * 5, gy - 5, 5, 10);
+      }
+      // posts
+      ctx.fillStyle = '#d9d2c1';
+      ctx.fillRect(x - 60, gy - 220, 10, 220);
+      ctx.fillRect(x + 50, gy - 220, 10, 220);
+      // banner
+      ctx.fillStyle = '#132218';
+      ctx.fillRect(x - 72, gy - 262, 144, 52);
+      ctx.strokeStyle = '#ff8a2a';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(x - 72, gy - 262, 144, 52);
+      ctx.fillStyle = '#f7f1e1';
+      ctx.font = '900 28px "Avenir Next Condensed", "Arial Narrow", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('FINISH', x, gy - 236);
+      ctx.restore();
     }
 
     drawRemoteRiders(ctx, pal) {

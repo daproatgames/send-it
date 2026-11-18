@@ -4,12 +4,12 @@ const UI = {
   form: $('cloudForm'), email: $('cloudEmail'), password: $('cloudPassword'),
   create: $('cloudCreate'), reset: $('cloudReset'), signedIn: $('cloudSignedIn'), account: $('cloudAccount'),
   nickname: $('cloudNickname'), shareScore: $('cloudShareScore'), saveProfile: $('cloudSaveProfile'),
-  signOut: $('cloudSignOut'), status: $('cloudStatus'),
+  signOut: $('cloudSignOut'), status: $('cloudStatus'), retry: $('cloudRetry'),
   conflict: $('cloudConflict'), useOnline: $('cloudUseOnline'), useDevice: $('cloudUseDevice'),
   leaderboardBtn: $('leaderboardBtn'), leaderboardModal: $('leaderboardModal'),
   leaderboardClose: $('leaderboardClose'), leaderboard2d: $('leaderboard2d'),
   leaderboard3d: $('leaderboard3d'), leaderboardRows: $('leaderboardRows'),
-  leaderboardStatus: $('leaderboardStatus')
+  leaderboardStatus: $('leaderboardStatus'), leaderboardRetry: $('leaderboardRetry')
 };
 
 const SAVE_KEY = 'sendit.cloud.uid';
@@ -44,16 +44,13 @@ function ghostKeys() {
   return (window.SENDIT_GARAGE?.trails || []).map((trail) => trail.id);
 }
 function localSnapshot() {
-  const ghosts = {};
-  for (const id of ghostKeys()) {
-    const value = readJSON(GHOST_PREFIX + id, null);
-    if (value && Array.isArray(value.samples)) ghosts[id] = value;
-  }
+  // Ghost replays are large and device-specific; keep them local so cloud
+  // documents stay well under Firestore's size limit and sync reliably.
   return {
     garage: readJSON(GARAGE_KEY, null),
     best2d: safeScore(localStorage.getItem(BEST_2D_KEY)),
     best3d: safeScore(localStorage.getItem(BEST_3D_KEY)),
-    ghosts,
+    ghosts: {},
     nickname: playerProfile.nickname,
     shareScore: playerProfile.shareScore,
     updatedAt: firestore.serverTimestamp()
@@ -73,10 +70,13 @@ function restoreSnapshot(data) {
   } else localStorage.removeItem(GARAGE_KEY);
   localStorage.setItem(BEST_2D_KEY, String(safeScore(data.best2d)));
   localStorage.setItem(BEST_3D_KEY, String(safeScore(data.best3d)));
-  for (const id of ghostKeys()) {
-    const ghost = data.ghosts?.[id];
-    if (ghost && Array.isArray(ghost.samples)) localStorage.setItem(GHOST_PREFIX + id, JSON.stringify(ghost));
-    else localStorage.removeItem(GHOST_PREFIX + id);
+  // Ghosts are local-only now. Only touch them when a snapshot actually
+  // contains ghost data (e.g. restoring an older cloud save).
+  if (data.ghosts && typeof data.ghosts === 'object' && Object.keys(data.ghosts).length) {
+    for (const id of ghostKeys()) {
+      const ghost = data.ghosts[id];
+      if (ghost && Array.isArray(ghost.samples)) localStorage.setItem(GHOST_PREFIX + id, JSON.stringify(ghost));
+    }
   }
 }
 function setAccountUI() {
@@ -96,8 +96,10 @@ function friendlyError(error) {
   if (code === 'auth/weak-password') return 'Choose a stronger password.';
   if (code === 'auth/invalid-email') return 'Enter a valid email address.';
   if (code === 'permission-denied') return 'Cloud access was denied. Check the database rules.';
+  if (code === 'unavailable' || code === 'failed-precondition') return 'Cloud is unreachable right now. Your device save is safe; retrying will sync it.';
   if (!navigator.onLine) return 'Offline. Your device save is safe; cloud sync will retry.';
-  return 'Cloud request failed. Please try again.';
+  const detail = code ? ` (${code})` : error?.message ? ` (${String(error.message).slice(0, 90)})` : '';
+  return `Cloud request failed${detail}. Your device save is safe.`;
 }
 function enqueueSave() {
   if (!user || !syncReady) return;
@@ -126,16 +128,22 @@ function saveNow() {
     if (!user || user.uid !== uid) return;
     const snapshot = localSnapshot();
     status('Saving online…');
-    try {
-      await firestore.setDoc(firestore.doc(db, 'players', uid), snapshot);
-      await publishScores(snapshot, uid);
-      localStorage.setItem(SAVE_KEY, uid);
-      localStorage.removeItem(DIRTY_KEY);
-      status('Saved online. Your progress is available on other devices.');
-    } catch (error) {
-      localStorage.setItem(DIRTY_KEY, '1');
-      status(friendlyError(error));
+    let lastError = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        await firestore.setDoc(firestore.doc(db, 'players', uid), snapshot);
+        await publishScores(snapshot, uid);
+        localStorage.setItem(SAVE_KEY, uid);
+        localStorage.removeItem(DIRTY_KEY);
+        status('Saved online. Your progress is available on other devices.');
+        return;
+      } catch (error) {
+        lastError = error;
+        if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 600 * (attempt + 1)));
+      }
     }
+    localStorage.setItem(DIRTY_KEY, '1');
+    status(friendlyError(lastError));
   });
   return saving;
 }
@@ -246,6 +254,12 @@ UI.leaderboardBtn.addEventListener('click', () => {
 UI.leaderboardClose.addEventListener('click', () => UI.leaderboardModal.classList.add('hidden'));
 UI.leaderboard2d.addEventListener('click', () => void showBoard('2d'));
 UI.leaderboard3d.addEventListener('click', () => void showBoard('3d'));
+UI.leaderboardRetry.addEventListener('click', () => void showBoard(selectedBoard));
+UI.retry.addEventListener('click', () => {
+  if (!user) { status('Sign in to save progress online.'); return; }
+  if (syncReady) void saveNow();
+  else void loadAccount(user);
+});
 for (const modal of [UI.cloudModal, UI.leaderboardModal]) {
   modal.addEventListener('pointerdown', (event) => { if (event.target === modal) modal.classList.add('hidden'); });
 }
@@ -325,7 +339,11 @@ if (!config?.apiKey || !config?.projectId || !config?.appId) {
     firestore = firestoreModule;
     const app = appModule.initializeApp(config);
     auth = authModule.getAuth(app);
-    db = firestoreModule.getFirestore(app);
+    try {
+      db = firestoreModule.initializeFirestore(app, { experimentalForceLongPolling: true });
+    } catch (error) {
+      db = firestoreModule.getFirestore(app);
+    }
     authModule.onAuthStateChanged(auth, (account) => { void loadAccount(account); });
   } catch (error) {
     status('Cloud service could not load. Local progress still works.');
